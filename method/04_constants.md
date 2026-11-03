@@ -17,9 +17,16 @@ Numbers are the cheapest evidence. Typical paths:
   instruction. They appear in the disassembly, not in memory.
 * **Folded math:** `x / 48000` often becomes `x * 2.0833333e-05`. `2π/fs` is folded into one constant. Search for the
   product, not for its parts.
-* **Addresses are not floats:** `consts` prints a float32 reading for every plausible word, so peripheral addresses
-  such as `0x40020010` show up as "float 2.03…". Words in `0x2000_0000–0x5FFF_FFFF` or `0xC000_0000…` are
-  usually RAM or peripheral addresses.
+* **Pointer or float? Decide by use, not by value:** `consts` prints a float32 reading for every plausible word, so
+  the peripheral address `0x40020010` shows up as "float 2.03…".
+  * The address range alone decides nothing. Common constants fall into the same ranges: 1.0 is `0x3f800000`,
+    π is `0x40490fdb`, 48000.0 is `0x473b8000`, and −2.0 is `0xc0000000`.
+  * Look at the instructions that consume the word. A pointer is loaded into a core register and then dereferenced
+    (`ldr`/`str` with it as the base) or compared with other addresses. A float constant is loaded with `vldr`, or
+    moved with `vmov` into an FPU register, and then used in floating-point arithmetic.
+  * The memory map (`l2a query <case> info`) helps further: a word that points into a mapped block, or into a known
+    peripheral range, is a pointer *candidate*.
+  * If the use is unclear, record both readings and mark the interpretation *inferred*.
 * **Double precision:** C code without the `f` suffix can produce float64 constants (`--type float64`,
   `search --double`) and calls to software double routines on single-precision FPUs.
 

@@ -11,7 +11,7 @@ Owners: **C** = Claude Code, **X** = Codex, **O** = owner.
 | 1 | Approve concept v0.3; Codex reviews it | O, X | PR merged |
 | 2 | Note the Ghidra and JDK hashes and compare them with the official downloads | O (C prepares the commands) | `docs/TOOLCHAIN.md` |
 | 3 | **Short PyGhidra check**: Ghidra is already known to run on Windows. Install PyGhidra offline, open the Daisy ELF or `.bin`, decompile one function, note the start-up time | C | Short note |
-| 4 | **Core**: `l2a open` (with a Cortex-M profile and generic ELF/PE), `l2a query`, the `case.md` template, `.gitignore` check | C, then X review | Affected tests green; review comments resolved |
+| 4 | **Core**: `l2a open` (with a Cortex-M profile and generic ELF/PE); `l2a query` with compact default output, `--max-lines`/`--offset` sections and `--out` to a file; `.gitignore` check. The `case.md` template is already in `templates/` | C, then X review | Affected tests green; review comments resolved |
 | 5 | **DSP skills** in `method/`: workflow, audio path, building blocks, constants, reverb/delay, parameter paths, verification | C, then X review | Skills usable by both agents |
 | 6 | **Rings/Torus with Cloud Reverb**: build `physical-modeling-fx-ambient` in the Daisy-Seed project; analyse the `.bin` only; compare with the source afterwards | C, O | Comparison note: correct / partly / wrong / missed |
 | 7 | **Look back**: which skills and queries helped, what is missing, what to drop | O, C, X | Short decision list |
@@ -21,7 +21,8 @@ Tests:
 
 * For small changes, run only the affected tests.
 * Before important merges and milestones, run the full local suite including Ghidra.
-* GitHub Actions may be used normally (public repo). Unit tests run on pushes and PRs; nothing in CI needs proprietary files.
+* A new or changed GitHub Actions workflow needs the owner's approval. Once approved, small, fast unit tests run automatically
+  on pushes and PRs. The full Ghidra integration runs locally or manually, not on every push. CI never needs proprietary files.
 
 Not on the roadmap:
 

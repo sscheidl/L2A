@@ -74,13 +74,13 @@ Most of REA's Ghidra lane is a thin, contract-wrapped layer over the Ghidra API.
 
 1. DSP skills (`method/`): the main deliverable.
 2. `l2a open`: a small profile with loader, language and base. Cortex-M profiles also seed from the vector table with the Thumb bit.
-3. `l2a query`: targeted retrieval with bounded output. It covers:
+3. `l2a query`: targeted retrieval. Output is compact by default; long results come in sections or as a file. It covers:
    * an overview with FP instruction counts
    * decompile and disassemble
    * xrefs and callers/callees
    * constants used by a function
    * typed reads and value search
-4. A `case.md` template.
+4. A `case.md` template (`templates/case.md`) that serves as the case's working memory.
 
 All of this is a small Python layer on top of PyGhidra that duplicates nothing in REA's infrastructure ([concept §3](L2A_Concept_v0.3.md)).
 

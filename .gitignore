@@ -36,5 +36,8 @@ work/
 
 # Tooling
 __pycache__/
+*.egg-info/
+build/
+dist/
 .venv/
 node_modules/

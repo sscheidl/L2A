@@ -16,17 +16,22 @@ implementation. Hardware and listening results are NOT MEASURED.
 
 | Document | Content |
 | --- | --- |
-| [SPEC_v0.2.md](docs/SPEC_v0.2.md) | Revised specification: architecture decision, v0.1 scope, security rules, phases |
-| [REA_DECISION_MATRIX.md](docs/REA_DECISION_MATRIX.md) | What to take over, adapt, add or omit from REA |
-| [RISKS_AND_OPEN_QUESTIONS.md](docs/RISKS_AND_OPEN_QUESTIONS.md) | Prioritised risks and questions for the owner |
-| [CODEX_BRIEF_v0.1.md](docs/CODEX_BRIEF_v0.1.md) | Implementation brief for Codex (draft, not released) |
+| [L2A_Concept_v0.3.md](docs/L2A_Concept_v0.3.md) | **Current** consolidated concept: PyGhidra architecture, MVP scope, DSP skills, security, test strategy |
+| [REA_Architecture_Review.md](docs/REA_Architecture_Review.md) | REA functions and interfaces versus existing tool APIs; selective adoption |
+| [L2A_Implementation_Roadmap.md](docs/L2A_Implementation_Roadmap.md) | Minimal, prioritised milestones M0–M7 |
 | [REA_STATIC_REVIEW_4b961e3.md](docs/REA_STATIC_REVIEW_4b961e3.md) | Static review of REA with file and line evidence |
+| [SPEC_v0.2.md](docs/SPEC_v0.2.md), [REA_DECISION_MATRIX.md](docs/REA_DECISION_MATRIX.md), [RISKS_AND_OPEN_QUESTIONS.md](docs/RISKS_AND_OPEN_QUESTIONS.md), [CODEX_BRIEF_v0.1.md](docs/CODEX_BRIEF_v0.1.md) | Superseded v0.2 documents, kept for traceability |
 | [history/CONCEPT_v0.1.de.md](docs/history/CONCEPT_v0.1.de.md) | Original concept v0.1 (German) |
 
 ## Roles
 
-The owner decides scope and approvals. Codex is the main developer. Claude reviews the architecture.
-GPT coordinates and checks quality. Agent rules: [AGENTS.md](AGENTS.md).
+* The owner decides scope and approvals.
+* Claude Code is the main developer and primary analyst.
+* Codex does the independent security and code review, and takes over tasks Claude does not handle.
+* GPT coordinates and checks scope.
+
+L2A stays agent-independent: every case can be continued by either agent from its files.
+Agent rules: [AGENTS.md](AGENTS.md).
 
 ## Licence
 

@@ -1,5 +1,7 @@
 # L2A – Listen to Anything: specification v0.2
 
+> **Superseded** by [L2A_Concept_v0.3.md](L2A_Concept_v0.3.md) (2026-11-03). Kept for traceability.
+
 Status: **concept, not approved for implementation** (2026-11-03)
 Supersedes: concept v0.1 (German, 2026-11-03)
 Author of this revision: Claude (architecture review). Decisions belong to the project owner.

@@ -1,5 +1,7 @@
 # Technical risks and open questions (prioritised)
 
+> **Partly superseded** (2026-11-03): the owner answered Q1–Q3 and Q5 (see [L2A_Concept_v0.3.md §1](L2A_Concept_v0.3.md)), and the remaining risks are carried into v0.3 §5–6. Kept for traceability.
+
 Labels: **[C]** confirmed in REA source at `4b961e3`, **[A]** assumption.
 
 ## Risks

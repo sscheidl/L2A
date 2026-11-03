@@ -43,8 +43,13 @@ The valid vendor signature on the main binaries is sufficient provenance evidenc
 | Field | Value |
 | --- | --- |
 | Python | CPython 3.12.10 (`C:\Users\ssche\AppData\Local\Programs\Python\Python312`) |
-| PyGhidra | 3.1.0, installed offline from `C:\Tools\ghidra_12.1.4_PUBLIC\Ghidra\Features\PyGhidra\pypkg\dist` into a dedicated venv (roadmap step 3; **not yet installed**) |
-| JPype | 1.5.2 (`cp312-win_amd64` wheel from the same folder) |
+| PyGhidra | 3.1.0, installed offline on 2026-11-03 from `C:\Tools\ghidra_12.1.4_PUBLIC\Ghidra\Features\PyGhidra\pypkg\dist` into the venv `D:\L2A-cases\_toolchain\pyghidra-venv` (`pip install --no-index --find-links <dist> pyghidra==3.1.0`). Wheel SHA-256 `f4c138098e63f7d6b3648ff8fba0619aabf088ce1d1e8692808fa1df9d8921a0` |
+| JPype | 1.5.2 (`cp312-win_amd64` wheel from the same folder), SHA-256 `c7b1c2d76d211cab60be16505d32a6b3c9fffc51ce79c68e81a3d48e5effff2d` |
+| packaging | 25.0 (same folder), SHA-256 `29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484` |
+| Environment | Set `GHIDRA_INSTALL_DIR=C:\Tools\ghidra_12.1.4_PUBLIC` and `JAVA_HOME=C:\Tools\jdk-21.0.12.1+1`; run the venv Python with `-I`. Check results: [PYGHIDRA_CHECK.md](PYGHIDRA_CHECK.md) |
+
+The wheels are part of the verified Ghidra tree, so their provenance follows from the Ghidra check above.
+The venv lies outside the repository and is not a pinned artefact itself; it can be recreated with the command above.
 
 ## Re-check
 

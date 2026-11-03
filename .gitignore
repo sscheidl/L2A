@@ -11,6 +11,15 @@ work/
 *.rep/
 *.gzf
 
+# Case layout written by l2a (a case copied into a checkout by mistake)
+case.md
+!/templates/case.md
+l2a-imports.json
+ghidra-backup-*/
+target-backup-*/
+target/
+out/
+
 # Typical firmware and binary formats (test fixtures must be generated from
 # source by the build, never committed as binaries)
 *.bin

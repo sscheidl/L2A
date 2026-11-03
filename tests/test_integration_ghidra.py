@@ -77,7 +77,7 @@ class GhidraIntegrationTest(unittest.TestCase):
     def test_raw_vector_handlers_match_elf_symbols(self):
         elf = self.q("disasm", "Reset_Handler", "--count", "1", program=ELF.name)
         raw = self.q("disasm", "reset_handler", "--count", "1")
-        addr = lambda text: re.search(r"^\s+([0-9a-f]{8})\s", text, re.M).group(1)  # noqa: E731
+        addr = lambda text: re.search(r"^\| +([0-9a-f]{8})\s", text, re.M).group(1)  # noqa: E731
         self.assertEqual(addr(elf), "24000748")
         self.assertEqual(addr(raw), "24000748")
 

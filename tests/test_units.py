@@ -213,18 +213,22 @@ class PlaceTargetTest(unittest.TestCase):
             src.parent.mkdir()
             src.write_bytes(b"v1")
             case = Case.at(tmp / "case")
-            dest = cli._place_target(case, src, "s1")
+            dest, backup = cli._place_target(case, src, "s1")
             self.assertEqual(dest.read_bytes(), b"v1")
-            self.assertEqual(cli._place_target(case, src, "s2"), dest)  # unchanged: no backup
+            self.assertIsNone(backup)
+            self.assertEqual(cli._place_target(case, src, "s2"), (dest, None))  # unchanged: no backup
             self.assertFalse((case.root / "target-backup-s2").exists())
             src.write_bytes(b"v2")  # rebuilt at the same path
-            self.assertEqual(cli._place_target(case, src, "s3").read_bytes(), b"v2")
-            self.assertEqual((case.root / "target-backup-s3" / "fw.bin").read_bytes(), b"v1")
+            dest, backup = cli._place_target(case, src, "s3")
+            self.assertEqual(dest.read_bytes(), b"v2")
+            self.assertEqual(backup, case.root / "target-backup-s3" / "fw.bin")
+            self.assertEqual(backup.read_bytes(), b"v1")
             src.write_bytes(b"v3")  # a second rebuild with the same timestamp gets its own backup folder
             cli._place_target(case, src, "s3")
             self.assertEqual((case.root / "target-backup-s3-2" / "fw.bin").read_bytes(), b"v2")
             inside = case.target_dir / "fw.bin"
-            self.assertEqual(cli._place_target(case, inside, "s4"), inside)  # already in the case
+            self.assertEqual(cli._place_target(case, inside, "s4"), (inside, None))  # already in the case
+            self.assertEqual(sorted(p.name for p in case.target_dir.iterdir()), ["fw.bin"])  # no temp files left
 
 
 class QueryArgvTest(unittest.TestCase):

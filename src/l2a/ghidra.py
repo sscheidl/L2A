@@ -13,22 +13,52 @@ from pathlib import Path
 
 from . import vectors
 from .case import Case, CaseError
+from .output import quote
 from .profiles import FORMAT_RAW, ImportSettings
 
-# Pinned tools (docs/TOOLCHAIN.md). Environment variables override the default paths.
+# Pinned tools (docs/TOOLCHAIN.md). Environment variables may point elsewhere, but versions are enforced.
 PINNED_GHIDRA = "12.1.4"
+PINNED_JDK = "21.0.12.1"
 DEFAULT_GHIDRA = r"C:\Tools\ghidra_12.1.4_PUBLIC"
 DEFAULT_JDK = r"C:\Tools\jdk-21.0.12.1+1"
+# Opt-ins for a deliberate deviation from the reviewed tool set.
+ALLOW_UNPINNED = "L2A_ALLOW_UNPINNED"
+ALLOW_EXTENSIONS = "L2A_ALLOW_EXTENSIONS"
+ENTRY_POINT_GROUPS = ("pyghidra.setup", "pyghidra.pre_launch")
 
 _env: dict | None = None
 
 
-def _ghidra_version(install: Path) -> str:
-    props = install / "Ghidra" / "application.properties"
-    for line in props.read_text(encoding="utf-8").splitlines():
-        if line.startswith("application.version="):
-            return line.split("=", 1)[1].strip()
+def _properties(path: Path, key: str) -> str:
+    if path.is_file():
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            if line.startswith(key + "="):
+                return line.split("=", 1)[1].strip().strip('"')
     return "unknown"
+
+
+def _user_extension_dirs(install: Path) -> list[Path]:
+    """Ghidra's per-user Extensions folders for this install ([user settings]/Extensions)."""
+    props = install / "Ghidra" / "application.properties"
+    name = (f"ghidra_{_properties(props, 'application.version')}_"
+            f"{_properties(props, 'application.release.name')}")
+    bases = [os.environ.get("XDG_CONFIG_HOME"), os.environ.get("APPDATA")]
+    return [Path(b) / "ghidra" / name / "Extensions" for b in bases if b]
+
+
+def tool_trust_problems(ghidra_version: str, jdk_version: str, extensions: list[str], entry_points: list[str],
+                        allow_unpinned: bool, allow_extensions: bool) -> list[str]:
+    """Why the selected tool set is not the reviewed one (empty list: it is)."""
+    problems = []
+    if not allow_unpinned:
+        if ghidra_version != PINNED_GHIDRA:
+            problems.append(f"Ghidra {ghidra_version} is not the pinned {PINNED_GHIDRA}")
+        if jdk_version != PINNED_JDK:
+            problems.append(f"JDK {jdk_version} is not the pinned {PINNED_JDK}")
+    if not allow_extensions:
+        problems += [f"installed Ghidra user extension {e}" for e in extensions]
+        problems += [f"PyGhidra start-up entry point {e}" for e in entry_points]
+    return problems
 
 
 def start() -> dict:
@@ -36,15 +66,27 @@ def start() -> dict:
     global _env
     if _env is not None:
         return _env
+    from importlib.metadata import entry_points
+
     install = Path(os.environ.get("GHIDRA_INSTALL_DIR") or DEFAULT_GHIDRA)
     jdk = os.environ.get("JAVA_HOME_OVERRIDE") or (DEFAULT_JDK if Path(DEFAULT_JDK).is_dir() else os.environ.get("JAVA_HOME"))
     if not (install / "Ghidra" / "application.properties").is_file():
         raise CaseError(f"Ghidra not found at {install}; set GHIDRA_INSTALL_DIR")
     if not jdk or not Path(jdk).is_dir():
         raise CaseError("JDK 21 not found; set JAVA_HOME_OVERRIDE or JAVA_HOME")
-    ghidra_version = _ghidra_version(install)
-    if ghidra_version != PINNED_GHIDRA:
-        print(f"[l2a] WARNING: Ghidra {ghidra_version} differs from the pinned {PINNED_GHIDRA} (docs/TOOLCHAIN.md)",
+    ghidra_version = _properties(install / "Ghidra" / "application.properties", "application.version")
+    jdk_version = _properties(Path(jdk) / "release", "JAVA_VERSION")
+    extensions = sorted(str(p) for d in _user_extension_dirs(install) if d.is_dir() for p in d.iterdir())
+    eps = sorted(f"{g}:{ep.name}={ep.value}" for g in ENTRY_POINT_GROUPS for ep in entry_points(group=g))
+    allow_unpinned = os.environ.get(ALLOW_UNPINNED) == "1"
+    allow_extensions = os.environ.get(ALLOW_EXTENSIONS) == "1"
+    problems = tool_trust_problems(ghidra_version, jdk_version, extensions, eps, allow_unpinned, allow_extensions)
+    if problems:
+        raise CaseError("the tool set differs from the reviewed one (docs/TOOLCHAIN.md):\n  " + "\n  ".join(problems)
+                        + f"\nSet {ALLOW_UNPINNED}=1 or {ALLOW_EXTENSIONS}=1 only for a deliberate deviation.")
+    if allow_unpinned or allow_extensions:
+        print(f"[l2a] WARNING: tool-trust opt-in active ({ALLOW_UNPINNED}={int(allow_unpinned)}, "
+              f"{ALLOW_EXTENSIONS}={int(allow_extensions)}); extensions: {len(extensions)}, entry points: {len(eps)}",
               file=sys.stderr)
     # JAVA_HOME_OVERRIDE makes PyGhidra use this JDK instead of searching for one.
     os.environ["GHIDRA_INSTALL_DIR"] = str(install)
@@ -55,7 +97,9 @@ def start() -> dict:
     from java.lang import System
 
     _env = {"ghidra": ghidra_version, "ghidra_dir": str(install), "java": str(System.getProperty("java.version")),
-            "java_home": str(jdk), "pyghidra": pkg_version("pyghidra")}
+            "java_home": str(jdk), "pyghidra": pkg_version("pyghidra"),
+            "trust": {"allow_unpinned": allow_unpinned, "allow_extensions": allow_extensions,
+                      "extensions": extensions, "entry_points": eps}}
     return _env
 
 
@@ -76,7 +120,7 @@ def open_project(case: Case, create: bool):
         return pyghidra.open_project(str(case.ghidra_dir), case.name, create=create)
     except Exception as e:  # Java exceptions arrive as Python exceptions
         if "Lock" in type(e).__name__ or "lock" in str(e).lower():
-            raise CaseError(f"project {case.project_file} is locked; close it in the Ghidra GUI first ({e})") from None
+            raise CaseError(f"project {case.project_file} is locked; close it in the Ghidra GUI first ({quote(e)})") from None
         raise
 
 
@@ -96,7 +140,8 @@ def read_program(project, name: str):
 
     df = domain_file(project, name)
     if df is None:
-        raise CaseError(f"program {name!r} not in the project; programs: {', '.join(program_names(project)) or 'none'}")
+        raise CaseError(f"program {quote(name)} not in the project; programs: "
+                        f"{', '.join(quote(n) for n in program_names(project)) or 'none'}")
     consumer = Object()
     program = df.getReadOnlyDomainObject(consumer, DomainFile.DEFAULT_VERSION, monitor())
     try:
@@ -120,7 +165,7 @@ def load(project, target: Path, name: str, settings: ImportSettings):
     try:
         return b.load()
     except Exception as e:
-        raise CaseError(f"{settings.profile.loader} could not load {target.name}: {e}") from None
+        raise CaseError(f"{settings.profile.loader} could not load {quote(target.name)}: {quote(e)}") from None
 
 
 def loaded_blocks(program) -> list:

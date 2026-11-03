@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import sys
 import time
@@ -43,43 +44,64 @@ def open_parser() -> argparse.ArgumentParser:
 def _backup_dir(case: Case, kind: str, stamp: str) -> Path:
     """A new, unused `<case>/<kind>-backup-<stamp>[-n]` path (two runs may share a timestamp)."""
     path, n = case.root / f"{kind}-backup-{stamp}", 1
-    while path.exists():
+    while path.exists() or path.is_symlink():
         n += 1
         path = case.root / f"{kind}-backup-{stamp}-{n}"
     return path
 
 
-def _place_target(case: Case, target: Path, stamp: str) -> Path:
-    """Copy an outside target into <case>/target/. An older copy with other content (a rebuild) is kept as a backup."""
+def _place_target(case: Case, target: Path, stamp: str) -> tuple[Path, Path | None]:
+    """Copy an outside target into <case>/target/. An older copy with other content (a rebuild) is kept as a backup.
+
+    Returns the case copy and the backup of the previous copy, if one was made.
+    """
     if casemod.is_within(target, case.root):
-        return target
+        return target, None
     dest = case.target_dir / target.name
+    backup = None
     if dest.exists():
         if casemod.sha256_file(dest) == casemod.sha256_file(target):
-            return dest
+            return dest, None
         backup = _backup_dir(case, "target", stamp) / target.name
         backup.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(dest, backup)
         _log(f"target content changed: old copy kept as {backup}")
     case.target_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(target, dest)
+    tmp = case.target_dir / f".{target.name}.{stamp}.tmp"
+    shutil.copy2(target, tmp)
+    os.replace(tmp, dest)  # a new file, never written through an existing hard link
     _log(f"copied target to {dest}")
-    return dest
+    return dest, backup
+
+
+def _replace_program(project, ghidra, results, name: str, stamp: str) -> None:
+    """Save the new program under `name`. An older program is parked under another name first and deleted only
+    after the save succeeded; if the save fails, it gets its name back."""
+    old = ghidra.domain_file(project, name)
+    parked = old.setName(f"{name}.l2a-old-{stamp}") if old is not None else None
+    try:
+        results.save(ghidra.monitor())
+    except BaseException:
+        if parked is not None:
+            parked.setName(name)
+        raise
+    if parked is not None:
+        parked.delete()
 
 
 def cmd_open(argv: list[str]) -> int:
     a = open_parser().parse_args(argv)
     settings = profiles.resolve(a.profile, a.language, a.compiler, a.base)
     case = Case.at(a.case)
-    case.check_not_in_git()
+    case.check_layout()
     src = Path(a.target).resolve()
     if not src.is_file():
         raise CaseError(f"target not found: {src}")
+    name = casemod.check_program_name(a.name or src.name)
     case.root.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    target = _place_target(case, src, stamp)
+    target, target_backup = _place_target(case, src, stamp)
     sha = casemod.sha256_file(target)
-    name = a.name or target.name
     records = case.load_records()
     rec = records.get(name)
 
@@ -94,6 +116,26 @@ def cmd_open(argv: list[str]) -> int:
 
     from . import ghidra
 
+    try:
+        rec = _import(case, ghidra, target, name, sha, settings, stamp)
+    except BaseException:
+        if target_backup is not None:
+            _log(f"import failed: project and record are unchanged, but {target} is now the new file; "
+                 f"the previous copy is {target_backup}")
+        raise
+
+    records[name] = rec
+    case.save_records(records)
+    text = case.case_md.read_text(encoding="utf-8") if case.case_md.exists() else casemod.initial_case_md(case.name, TEMPLATE)
+    casemod.write_text_atomic(case.case_md, casemod.update_case_md(text, casemod.imports_block(records)))
+    _log(f"imported {name}: {rec['format']}, {rec['language']}, {rec['function_count']} functions; "
+         f"import {rec['timings_s']['import']} s, analysis {rec['timings_s']['analyze']} s")
+    _log(f"project {case.project_file}; record {case.record_file}; case.md updated")
+    return 0
+
+
+def _import(case: Case, ghidra, target: Path, name: str, sha: str, settings, stamp: str) -> dict:
+    """Load, verify, analyse and save one program. Returns its import record."""
     t0 = time.perf_counter()
     env = ghidra.start()
     t_start = time.perf_counter() - t0
@@ -117,11 +159,8 @@ def cmd_open(argv: list[str]) -> int:
             _log(f"analysing {name} (default analysis options) ...")
             ghidra.analyze(program)
             t_analyze = time.perf_counter() - t
-            old = ghidra.domain_file(project, name)
-            if old is not None:
-                old.delete()
-            results.save(ghidra.monitor())
-            rec = {
+            _replace_program(project, ghidra, results, name, stamp)
+            return {
                 "target": str(target.relative_to(case.root)),
                 "sha256": sha,
                 "size": target.stat().st_size,
@@ -143,15 +182,6 @@ def cmd_open(argv: list[str]) -> int:
             results.close()
     finally:
         project.close()
-
-    records[name] = rec
-    case.save_records(records)
-    text = case.case_md.read_text(encoding="utf-8") if case.case_md.exists() else casemod.initial_case_md(case.name, TEMPLATE)
-    case.case_md.write_text(casemod.update_case_md(text, casemod.imports_block(records)), encoding="utf-8")
-    _log(f"imported {name}: {rec['format']}, {rec['language']}, {rec['function_count']} functions; "
-         f"import {rec['timings_s']['import']} s, analysis {rec['timings_s']['analyze']} s")
-    _log(f"project {case.project_file}; record {case.record_file}; case.md updated")
-    return 0
 
 
 # --- query ---------------------------------------------------------------------------------------------------
@@ -187,8 +217,11 @@ def cmd_query(argv: list[str]) -> int:
     parser = q.build_parser()
     parsed = [parser.parse_args(x) for x in raw_queries]  # fail on bad arguments before starting Ghidra
     case = Case.at(case_arg)
+    case.check_layout()
     case.require_project()
-    outs = [case.resolve_out(p.out, p.allow_outside) if p.out else None for p in parsed]
+    for p in parsed:  # fail early; each path is checked again right before it is written
+        if p.out:
+            case.resolve_out(p.out, p.allow_outside)
     records = case.load_records()
 
     from . import ghidra
@@ -199,7 +232,8 @@ def cmd_query(argv: list[str]) -> int:
         names = ghidra.program_names(project)
         if program_name is None:
             if len(names) != 1:
-                raise CaseError(f"the project has {len(names)} programs; choose one with -p: {', '.join(names)}")
+                raise CaseError(f"the project has {len(names)} programs; choose one with -p: "
+                                f"{', '.join(output.quote(n) for n in names)}")
             program_name = names[0]
         rec = records.get(program_name)
         if rec:
@@ -207,10 +241,11 @@ def cmd_query(argv: list[str]) -> int:
             if tpath.is_file() and casemod.sha256_file(tpath) != rec["sha256"]:
                 print(f"[l2a] WARNING: {tpath} changed since the import; run `l2a open` again", file=sys.stderr)
         with ghidra.read_program(project, program_name) as program:
-            for p, out in zip(parsed, outs):
+            for p in parsed:
                 title, lines = q.COMMANDS[p.cmd](program, p, {"record": rec})
-                if out is not None:
-                    print(output.write_full(out, title, lines))
+                if p.out:
+                    case.check_layout()
+                    print(output.write_full(case.resolve_out(p.out, p.allow_outside), title, lines))
                 else:
                     max_lines = output.DEFAULT_MAX_LINES if p.max_lines is None else p.max_lines
                     print(output.render(title, lines, p.offset, max_lines))
@@ -241,7 +276,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return commands[argv[0]](argv[1:])
     except CaseError as e:
-        print(f"l2a: error: {e}", file=sys.stderr)
+        # Every line is escaped, so text quoted in a message can never start a line of its own.
+        for i, line in enumerate(str(e).split("\n")):
+            print(("l2a: error: " if i == 0 else "  ") + output.escape(line.strip()), file=sys.stderr)
         return 2
 
 

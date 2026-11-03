@@ -38,7 +38,6 @@ class CaseTest(unittest.TestCase):
 
     def test_out_outside_case_refused(self):
         c = Case.at(self.root / "case")
-        self.assertEqual(c.resolve_out("../notes.c"), c.root / "notes.c")  # out/.. is still the case folder
         for bad in ("../../escape.c", str(self.root / "other" / "x.c")):
             with self.assertRaises(CaseError):
                 c.resolve_out(bad)

@@ -11,6 +11,7 @@ import re
 from . import values
 from .case import CaseError
 from .ghidra import loaded_blocks, monitor
+from .output import quote
 from .profiles import parse_addr
 
 HEX = re.compile(r"^(0x)?[0-9a-fA-F]+$")
@@ -30,15 +31,15 @@ def resolve_address(program, spec: str):
         if len(addrs) == 1:
             return syms[0].getAddress()
         if len(addrs) > 1:
-            raise CaseError(f"symbol {spec!r} is ambiguous: {', '.join(addrs[:10])}; give the address")
+            raise CaseError(f"symbol {quote(spec)} is ambiguous: {', '.join(addrs[:10])}; give the address")
         if not HEX.match(spec):
-            raise CaseError(f"no symbol named {spec!r}")
+            raise CaseError(f"no symbol named {quote(spec)}")
     try:
         return _space(program).getAddress(parse_addr(spec))
     except CaseError:
         raise
     except Exception as e:
-        raise CaseError(f"bad address {spec!r}: {e}") from None
+        raise CaseError(f"bad address {quote(spec)}: {quote(e)}") from None
 
 
 def resolve_function(program, spec: str):
@@ -128,7 +129,7 @@ def q_decompile(program, args, ctx):
         ifc.openProgram(program)
         res = ifc.decompileFunction(fn, args.timeout, monitor())
         if not res.decompileCompleted():
-            raise CaseError(f"decompile of {fn.getEntryPoint()} failed: {res.getErrorMessage()}")
+            raise CaseError(f"decompile of {fn.getEntryPoint()} failed: {quote(res.getErrorMessage())}")
         c = str(res.getDecompiledFunction().getC())
     finally:
         ifc.dispose()

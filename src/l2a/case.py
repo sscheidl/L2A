@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
 RECORD_NAME = "l2a-imports.json"
 IMPORTS_BEGIN = "<!-- l2a:imports:begin -->"
 IMPORTS_END = "<!-- l2a:imports:end -->"
+PROGRAM_NAME_EXTRA = set(" ._+-()[]")
 
 
 class CaseError(Exception):
@@ -26,7 +29,7 @@ def sha256_file(path: Path) -> str:
 
 
 def git_checkout_of(path: Path) -> Path | None:
-    """The git checkout containing `path` (a directory with `.git`), or None."""
+    """The git checkout containing `path` (a directory with `.git`, folder or file), or None."""
     for p in [path, *path.parents]:
         if (p / ".git").exists():
             return p
@@ -39,6 +42,32 @@ def is_within(path: Path, root: Path) -> bool:
         return True
     except ValueError:
         return False
+
+
+def is_link(path: Path) -> bool:
+    """A symbolic link or an NTFS junction (both redirect writes elsewhere)."""
+    return path.is_symlink() or (hasattr(path, "is_junction") and path.is_junction())
+
+
+def write_text_atomic(path: Path, text: str) -> None:
+    """Write a new file and swap it in. An existing hard link to the old file is never written through."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+            f.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+
+def check_program_name(name: str) -> str:
+    """A program name must be one plain path component: letters, digits and ` ._+-()[]`, not starting with a dot."""
+    if not name or len(name) > 128 or name.startswith(".") or not all(c.isalnum() or c in PROGRAM_NAME_EXTRA
+                                                                       for c in name):
+        raise CaseError(f"unsupported program name {json.dumps(name)}; use --name with letters, digits and ' ._+-()[]'")
+    return name
 
 
 @dataclass(frozen=True)
@@ -84,6 +113,18 @@ class Case:
             raise CaseError(f"case folder {self.root} is inside the git checkout {checkout}; "
                             "cases must live outside every checkout (default D:\\L2A-cases\\)")
 
+    def check_layout(self) -> None:
+        """Before any write: the case is outside every checkout, and none of the folders or files l2a writes is a
+        link, a junction, or a nested checkout that would redirect the write."""
+        self.check_not_in_git()
+        for p in (self.target_dir, self.ghidra_dir, self.out_dir, self.case_md, self.record_file, self.project_file):
+            if is_link(p):
+                raise CaseError(f"{p} is a link or junction; l2a does not write through links")
+            if p.exists() and not is_within(p.resolve(), self.root):
+                raise CaseError(f"{p} resolves outside the case folder {self.root}")
+            if p.is_dir() and (p / ".git").exists():
+                raise CaseError(f"{p} contains a git checkout; l2a does not write into checkouts")
+
     def require_project(self) -> None:
         if not self.project_file.exists():
             raise CaseError(f"no Ghidra project in {self.ghidra_dir}; run `l2a open {self.root} <target> --profile ...` first")
@@ -94,23 +135,35 @@ class Case:
         return json.loads(self.record_file.read_text(encoding="utf-8"))
 
     def save_records(self, records: dict) -> None:
-        self.ghidra_dir.mkdir(parents=True, exist_ok=True)
-        self.record_file.write_text(json.dumps(records, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        write_text_atomic(self.record_file, json.dumps(records, indent=2, sort_keys=True) + "\n")
 
     def resolve_out(self, out: str, allow_outside: bool = False) -> Path:
         """Resolve a `--out` path. Relative paths go to `<case>/out/`.
 
-        Paths outside the case folder, or inside any git checkout, are refused unless `allow_outside` is set.
+        Inside the case folder, only `<case>/out/` is allowed; the project, records, targets and case.md are never
+        overwritten. Paths outside the case folder, or inside any git checkout, need `allow_outside`.
         """
         p = Path(out)
         path = (p if p.is_absolute() else self.out_dir / p).resolve()
+        if is_within(path, self.root):
+            if not is_within(path, self.out_dir) or path == self.out_dir:
+                raise CaseError(f"--out {path} is inside the case folder but not in {self.out_dir}")
+        elif not allow_outside:
+            raise CaseError(f"--out {path} is outside the case folder {self.root}; use --allow-outside to override")
         if not allow_outside:
-            if not is_within(path, self.root):
-                raise CaseError(f"--out {path} is outside the case folder {self.root}; use --allow-outside to override")
             checkout = git_checkout_of(path.parent)
             if checkout is not None:
                 raise CaseError(f"--out {path} is inside the git checkout {checkout}; use --allow-outside to override")
         return path
+
+
+def md_code(text: str) -> str:
+    """Inline Markdown code for an untrusted name in a table cell: no raw controls, pipes or unbalanced backticks."""
+    s = "".join(c if c.isprintable() else f"\\x{ord(c):02x}" for c in str(text)).replace("|", "\\|")
+    run = max((len(m) for m in re.findall(r"`+", s)), default=0)
+    fence = "`" * (run + 1)
+    pad = " " if s.startswith("`") or s.endswith("`") else ""
+    return f"{fence}{pad}{s}{pad}{fence}"
 
 
 def imports_block(records: dict) -> str:
@@ -120,8 +173,10 @@ def imports_block(records: dict) -> str:
              "| --- | --- | --- | --- | --- | --- | --- |"]
     for name in sorted(records):
         r = records[name]
-        lines.append(f"| `{name}` | `{r['sha256']}` | {r['profile']} | {r['format']} / `{r['language']}` / "
-                     f"`{r['compiler']}` | {r.get('base') or '-'} | {r['imported_at']} | {r['function_count']} |")
+        cells = [md_code(name), md_code(r["sha256"]), md_code(r["profile"]),
+                 f"{md_code(r['format'])} / {md_code(r['language'])} / {md_code(r['compiler'])}",
+                 md_code(r.get("base") or "-"), md_code(r["imported_at"]), md_code(r["function_count"])]
+        lines.append("| " + " | ".join(cells) + " |")
     lines += ["", "Settings, timings and tool versions: `ghidra\\" + RECORD_NAME + "`.", IMPORTS_END]
     return "\n".join(lines)
 

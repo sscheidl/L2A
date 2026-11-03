@@ -9,7 +9,7 @@ Recorded on 2026-11-03 by Claude.
 
 | Field | Value |
 | --- | --- |
-| Install path | `C:\Tools\ghidra_12.1.4_PUBLIC` (installed about 2026-10-20; the original archive is no longer on the machine) |
+| Install path | `C:\Tools\ghidra_12.1.4_PUBLIC` (installed about 2026-10-20) |
 | Build | `application.build.date=2026-Sep-21 1613 UTC`, Java ≥ 21 (`Ghidra/application.properties`) |
 | Official release | [Ghidra_12.1.4_build](https://github.com/NationalSecurityAgency/ghidra/releases/tag/Ghidra_12.1.4_build), published 2026-09-21 |
 | Official archive | `ghidra_12.1.4_PUBLIC_20260921.zip`, 569,649,598 bytes |
@@ -17,8 +17,15 @@ Recorded on 2026-11-03 by Claude.
 | Local tree | 5,219 files; manifest `D:\L2A-cases\_toolchain\ghidra_12.1.4_PUBLIC.sha256`; manifest SHA-256 `a72dd1a3473f48502d5378e3a0416596dda3286d1484a24f443ba491d96928fd` |
 | Internal consistency | The module JAR SHA-1 matches the shipped `bom.json`, spot check on `68000.jar`. This proves integrity only, not provenance, because `bom.json` is part of the same tree |
 
-**Provenance check against the official archive: NOT DONE.** It needs the official ZIP (570 MB) for a file-by-file comparison
-with the local manifest. Until then, the install counts as "plausibly official, not verified".
+**Provenance check against the official archive: VERIFIED on 2026-11-03.** Steps:
+
+1. The official ZIP was downloaded from the GitHub release (`gh release download`). Its SHA-256 matched the published
+   value `ddac49f9…d4db` exactly.
+2. Every file in the ZIP was hashed and compared with the local manifest. Result: **5,219 of 5,219 files identical**;
+   0 changed, 0 missing, 0 extra.
+3. The ZIP was deleted afterwards.
+
+The local install is byte-identical to the official Ghidra 12.1.4 release.
 
 ## JDK 21
 

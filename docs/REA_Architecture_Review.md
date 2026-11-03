@@ -56,7 +56,9 @@ Most of REA's Ghidra lane is a thin, contract-wrapped layer over the Ghidra API.
 | Firmware container parsers (HEX, S-record, UF2, DfuSe, ESP, FIT/uImage) | `arm-none-eabi-objcopy` for HEX/S-record; others only when a case needs them | [F:repo] toolchain; [A] |
 | Byte entropy | A few lines of Python | – |
 | Binwalk/Unblob extraction (Linux-only in REA) | Not needed for own firmware; for vendor installers, static unpacking (for example 7-Zip) when a case requires it | [O] |
-| Frida, debuggers, browser/Electron/Android/.NET lanes | Use those tools directly if a non-DSP case ever needs them | [A] |
+| Frida, debuggers, process capture (dynamic analysis) | Use Frida, x64dbg/WinDbg/Visual Studio and plugin hosts directly, on demand ([concept §2](L2A_Concept_v0.3.md)) | [A] |
+| (not in REA) single-function emulation | Ghidra `EmulatorHelper` via PyGhidra | [F:local] class present |
+| Browser/Electron/Android/.NET lanes | Use those tools directly if a case ever needs them | [A] |
 
 **Things REA does not provide, so no API saves us from building them** [F:REA, by absence]:
 
@@ -71,19 +73,22 @@ Most of REA's Ghidra lane is a thin, contract-wrapped layer over the Ghidra API.
 ## 4. What L2A must build itself (minimal)
 
 1. DSP skills (`method/`): the main deliverable.
-2. Case format and findings/unknowns schema with a Markdown render.
-3. `l2a import`: a profile with loader, language, base and regions, plus Cortex-M vector-table seeding with the Thumb bit.
-4. `l2a export`: deterministic JSON including per-function FP/DSP instruction counts and strings tagged untrusted.
-5. `l2a query`: decompile, xrefs, typed reads.
-6. A repo guard test.
+2. `l2a open`: a small profile with loader, language and base. Cortex-M profiles also seed from the vector table with the Thumb bit.
+3. `l2a query`: targeted retrieval with bounded output. It covers:
+   * an overview with FP instruction counts
+   * decompile and disassemble
+   * xrefs and callers/callees
+   * constants used by a function
+   * typed reads and value search
+4. A `case.md` template.
 
-Each of these is a small Python module on top of PyGhidra. None duplicates REA's infrastructure.
+All of this is a small Python layer on top of PyGhidra that duplicates nothing in REA's infrastructure ([concept §3](L2A_Concept_v0.3.md)).
 
 ## 5. Selective REA adoption
 
 | Candidate | Benefit | Decision | Conditions |
 | --- | --- | --- | --- |
-| Evidence `confidence` × `authority` vocabulary; unknowns status and resolution rules | Direct fit for "proof vs assumption" | **Adopt as data model in the MVP** (rewritten as JSON Schema, not copied as code) | MIT attribution in `THIRD_PARTY_NOTICES.md` |
+| Evidence vocabulary: observed / derived / inferred; open vs resolved unknowns | Direct fit for "proof vs assumption" | **Adopt the words** in the skills and the `case.md` template. No code or schema is copied | Credit REA (MIT) in a short note |
 | `untrusted_content` marking of target-derived text | Prompt-injection hygiene | **Adopt the idea** | None |
 | Ghidra isolation pattern (temporary project, private HOME/APPDATA/TEMP, `-readOnly`, bounded heap) | Run hygiene | **Adopt the idea** in the PyGhidra launcher | None |
 | `ReaGhidraNoReturnFix.java`, `ReaGhidraPrepareRaw.java` and similar | Edge-case knowledge | **Read as reference only** | Licence check if any line is ever copied |
@@ -102,7 +107,12 @@ Each of these is a small Python module on top of PyGhidra. None duplicates REA's
 
 ## 7. Conclusion
 
-For a Windows-first, Cortex-M-first, DSP-focused tool, REA's runtime adds nothing that Ghidra and PyGhidra don't already
-provide directly. REA's main reusable asset is its evidence discipline. L2A should stay independent: it adopts that
-vocabulary, builds a thin PyGhidra layer and DSP skills, and treats REA as a reference to consult when a new target class
-appears (PE plugins, Mach-O, containers).
+L2A is a Windows-first, DSP-focused analysis platform for many targets: Daisy/Cortex-M, ESP32 (Xtensa), VST3 PE, logue SDK
+ARM ELF and others. For such a platform, REA's runtime adds little that Ghidra, PyGhidra and the standard dynamic tools don't
+already provide directly. On Windows, REA would even block two of these target classes, ELF and raw ARM [F:REA].
+
+REA's main reusable asset is its evidence discipline. L2A should stay independent:
+
+* adopt that evidence vocabulary
+* build a thin PyGhidra query layer and the DSP skills
+* treat REA as a reference to consult when a new target class or format appears (Mach-O, vendor containers)

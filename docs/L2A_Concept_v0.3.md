@@ -1,272 +1,182 @@
-# L2A – Listen to Anything: consolidated concept v0.3
+# L2A – Listen to Anything: concept v0.3
 
-Status: **concept, not approved for implementation** (2026-11-03)
-Supersedes: [SPEC_v0.2.md](SPEC_v0.2.md) and the v0.1 concept. It incorporates the owner decisions of 2026-11-03.
-Author: Claude (architecture review). The owner decides scope and approvals.
+Status: **concept, not approved for implementation** (revision 2, 2026-11-03). This is a private hobby project, so the
+concept stays deliberately small. It supersedes [SPEC_v0.2.md](SPEC_v0.2.md).
 
-## Evidence labels
+Labels: **[F]** fact checked in source or files (REA at `4b961e3`, the owner's machine, the owner's repos, or a cited web page),
+**[A]** assumption, **[O]** open. Nothing has been run yet, so all Ghidra capabilities on this machine are **NOT MEASURED**.
 
-| Label | Meaning |
-| --- | --- |
-| **[F:REA]** | Fact confirmed in the REA source at commit `4b961e3` ([review](REA_Architecture_Review.md)) |
-| **[F:local]** | Fact confirmed by reading files on the owner's Windows 11 machine on 2026-11-03 (nothing executed) |
-| **[F:repo]** | Fact confirmed in the Daisy-Seed repository |
-| **[F:web]** | Fact from a public web source (cited) |
-| **[A]** | Plausible assumption, not verified |
-| **[O]** | Open question: needs a decision or a measurement |
+## 1. Decisions
 
-No tool has been run. Every capability statement about Ghidra on this machine is **NOT MEASURED**.
+1. **Broad analysis platform.** Examples: Daisy Seed3, AMYboard, VST3 plugins, Korg logue SDK units, and other synthesiser and
+   effects firmware. There is no restriction to ARM or Daisy.
+2. **Analysis only.** L2A builds no synthesisers, effects or firmware; implementations happen in other projects.
+3. **Static and dynamic analysis**, including on original vendor files, with dynamic work done when needed.
+4. **Detailed DSP analysis** is the core function, through targeted retrieval of pseudocode, disassembly, constants and
+   function relations. No mandatory full exports.
+5. **Pragmatic security.** No OS sandbox. The rules in §5 apply, plus an independent Codex review.
+6. **Simple Rings/Torus test.** Original sources are not consulted, and every finding rests on concrete binary evidence.
+7. **Resource efficiency.** Spend tokens, CI and tests deliberately (§6).
+8. **Freedom of method.** The assistant chooses tools and approach. Extensions and plan changes are possible after consultation.
 
-## 1. Owner decisions (binding input)
+Still valid from before:
 
-* L2A does universal reverse engineering, specialised in music software, synthesisers, effects, DSP and firmware.
-  Existing capabilities must not be restricted unnecessarily.
-* REA is a **technical reference**, not a dependency. L2A studies its architecture, prefers existing tools' own APIs,
-  and adopts REA parts selectively only with a proven benefit and after an independent security and licence check.
-  There is no upstream synchronisation.
-* Start with solid DSP skills and analysis methods. Build tools only when their benefit is proven.
-* Tests:
-  1. A short infrastructure test.
-  2. The main test: Daisy Rings/Torus with Cloud Reverb, analysed from compiled firmware first, then compared with the source.
-  3. Optionally, Source Audio Ventris and Nemesis.
-* The Audio Lab comes later; the MVP has no audio measurement.
-* Platform: **Windows 11**.
-* Original firmware, binaries and Ghidra projects stay local. Pseudocode, disassembly, extracted DSP routines and
-  analysis information **may** be sent to Claude or Codex.
-* Roles:
-  * **Claude Code** is the main developer and primary analyst.
-  * **Codex** does the independent security and code review, and acts as backup.
-  * **GPT** coordinates.
-* L2A stays agent-independent.
+* REA is a reference only: no installation and no upstream sync.
+* Windows 11 is the platform.
+* Binaries and Ghidra projects stay local. Pseudocode and analysis notes may go to Claude or Codex.
+* Nothing proprietary goes into this public repo.
+* Roles: Claude Code develops and analyses, Codex reviews, GPT coordinates. L2A stays agent-independent.
+* The Audio Lab comes later.
 
-## 2. Architecture correction
+## 2. Architecture
 
-### 2.1 The simpler solution
+**L2A = PyGhidra + a small query CLI + DSP skills (Markdown) + one folder per case.** All other tools are used directly.
 
-v0.2 planned Ghidra headless scripts started through `analyzeHeadless`. There is a simpler and safer route:
+What is already on the machine [F]:
 
-**L2A = PyGhidra + a thin Python CLI + agent-neutral DSP skills + a file-based case format.**
+* **Ghidra and Java.** Ghidra 12.1.4 is at `C:\Tools\ghidra_12.1.4_PUBLIC` and needs Java 21. JDK 21.0.12 is at `C:\Tools\jdk-21.0.12.1+1`.
+* **PyGhidra.** PyGhidra 3.1.0 and the JPype wheels for Python 3.12/Windows ship *inside* the Ghidra folder, so they install offline. Python 3.12.10 is installed.
+* **Loaders and languages.** The binary, ELF and PE loaders are available. Any processor language can be selected, for example `ARM:LE:32:Cortex`.
+* **Processor modules.** ARM, AARCH64, x86, Xtensa, RISCV and others are present. **No SHARC, DSP56300 or TI C6000.**
+* **Built-in features.** Decompiler, FunctionID, BSim, VersionTracking and the emulator (`EmulatorHelper`) are included.
 
-| Fact | Label |
-| --- | --- |
-| Ghidra 12.1.4 is installed at `C:\Tools\ghidra_12.1.4_PUBLIC`, with JDK 21.0.12 at `C:\Tools\jdk-21.0.12.1+1` | [F:local] |
-| Ghidra 12.1.4 requires Java ≥ 21 (`application.java.min=21`) | [F:local] |
-| The Ghidra distribution ships **PyGhidra 3.1.0 and JPype 1.5.2 wheels, including `cp312-win_amd64`**. CPython 3.12.10 is installed | [F:local] |
-| `analyzeHeadless` supports `-processor`, `-loader BinaryLoader -loader-baseAddr`, `-readOnly`, `-deleteProject` and `-max-cpu` | [F:local] |
-| The language `ARM:LE:32:Cortex` exists (`ARM.ldefs`, `ARMCortex.pspec`) | [F:local] |
-| Processor modules include ARM, AARCH64, x86, Xtensa, RISCV, MIPS, PowerPC, TI_MSP430 and more. There is **no SHARC, DSP56300 or TI C6000** module | [F:local] |
-| Features include Decompiler, FunctionID, BSim, VersionTracking, SystemEmulation (`EmulatorHelper`), Sarif and the GNU/Microsoft/Swift demanglers | [F:local] |
+Why PyGhidra:
 
-Why PyGhidra instead of headless scripts or REA:
-
-1. **The API is used directly in CPython** (`DecompInterface`, `FlatProgramAPI`, `FunctionManager`,
-   `ReferenceManager`, `Memory` and so on), so L2A needs no Java bridge, no socket and no token protocol.
-   REA needs all of these [F:REA].
-2. **No `.bat` invocation.** Starting `analyzeHeadless.bat` from a program with arguments goes through cmd.exe parsing.
-   That is a known argument-injection risk class on Windows, and REA has to guard against it
-   (`WindowsBatchCommand.ts`) [F:REA]. PyGhidra starts the JVM in-process [A, documented in its README].
-3. **Offline installation.** The wheels come from the Ghidra distribution itself, so no PyPI access is needed [F:local].
-4. **Universal by pass-through.** L2A does not gate formats or architectures. It passes loader, language and
-   base address to Ghidra, so everything Ghidra can open, L2A can open. REA, by contrast, refuses raw Cortex-M and,
-   on Windows, ELF [F:REA].
-
-### 2.2 Component view
+* It gives direct access to the Ghidra API from Python. No Java bridge and no `.bat` calls are needed; with arguments, `.bat` calls are a Windows injection risk that REA has to guard against [F].
+* L2A simply passes loader, language and base address through. Anything Ghidra can open, L2A can open.
+* REA, by contrast, refuses ELF and raw ARM on Windows [F].
 
 ```
-D:\L2A-cases\<case>\          (local only; never in git)
-  case.json  target.bin  ghidra\  exports\  findings\  notes\
-        ▲
-        │  l2a CLI (Python, stdlib + PyGhidra)       method\  (agent-neutral DSP skills, Markdown)
-        │  case init | import | export | query        read by Claude Code and Codex via AGENTS.md
-        ▼
-  PyGhidra 3.1.0 ──► Ghidra 12.1.4 + JDK 21  (C:\Tools, pinned, hash-recorded)
+D:\L2A-cases\<case>\      case.md, target files, ghidra\, notes   (local, never in git)
+      ▲
+  l2a open | query   (Python + PyGhidra)          method\*.md   (DSP skills, read by any agent)
+      ▼
+  Ghidra 12.1.4 + JDK 21      + any other tool when useful (binutils, debugger, plugin host, Python scripts)
 ```
 
-* **Agents call the CLI and read files.** Claude Code and Codex both run shell commands and read JSON/Markdown,
-  so neither needs an MCP server [A]. A thin MCP wrapper over the same functions is a later option (§7).
-* **Agent independence comes from files:** `AGENTS.md` (canonical; `CLAUDE.md` only includes it), `method/*.md`, and the case
-  directory. A case can be continued by the other agent from the files alone.
-* **Other tool chains are used directly, not wrapped:** GNU binutils from the pinned Daisy toolchain
-  (`arm-none-eabi-objdump/readelf/nm/objcopy`) [F:repo], and later, for example, ILSpy, jadx or Frida for non-DSP targets.
-  L2A records their use in the case. It does not rebuild REA's breadth.
+* **Queries are targeted**: one function, one address range, one table. Several requests can go into one call, which saves Ghidra start-up time.
+* **Agent independence** comes from plain files: `AGENTS.md`, `method/` and the case folder.
 
-## 3. Scope of the MVP (v0.1)
+### Target platforms (examples)
 
-### 3.1 What L2A builds itself
-
-| # | Component | Size | Why it is needed |
-| --- | --- | --- | --- |
-| 1 | **DSP skills** (`method/`) | Main effort | The owner's priority. It is the part REA and Ghidra do not have [F:REA: no DSP code] |
-| 2 | **Case format** (`case.json` + folder layout) | Small | Reproducibility, provenance and agent hand-over |
-| 3 | **Findings/unknowns schema** + Markdown render | Small | Separates proof from assumption, using REA's vocabulary [F:REA] |
-| 4 | **`l2a import`**: profile-based import (loader, language, base address, extra memory regions; Cortex-M vector-table seeding with the Thumb bit) | Small | Ghidra imports a raw binary but does not interpret the Cortex-M vector table [A] |
-| 5 | **`l2a export`**: JSON of functions, decompiler text, call edges, xrefs, strings (tagged `untrusted`), and **per-function FP/DSP instruction counts** | Small/medium | One deterministic file per analysis run. Agents work from it instead of a GUI |
-| 6 | **`l2a query`**: decompile a function, xrefs to/from, **typed read** (float32/int16/Q15/Q31/uint16 array at an address) | Small | The interactive part, for drilling down during analysis |
-| 7 | **Repo guard test**: no binaries or dumps in the public repo | Tiny | Public repository |
-
-### 3.2 What L2A does not build (existing functionality)
-
-| Need | Existing tool | Label |
+| Platform | Binary | Ghidra route |
 | --- | --- | --- |
-| Disassembly and decompilation for 40+ processor families | Ghidra | [F:local] |
-| Library function identification (libDaisy, STM32 HAL, CMSIS) | Ghidra FunctionID / BSim | [F:local] presence; usefulness [O] |
-| Comparing builds and versions | Ghidra VersionTracking / BSim | [F:local] |
-| ELF symbols, sections and maps of own builds | `arm-none-eabi-readelf/nm/objdump` | [F:repo] |
-| Single-function emulation (later) | Ghidra `EmulatorHelper` | [F:local] |
-| Numeric checks (filter response from coefficients and similar) | Throw-away Python in the case directory | – |
-| Evidence and unknowns vocabulary | Taken from REA as a data model | [F:REA] |
+| Daisy Seed3 (Cortex-M7) | ELF or raw `.bin`, loaded at `0x24000000` [F] | ELF or binary loader with `ARM:LE:32:Cortex` |
+| AMYboard | ESP32-S3 firmware [F: [Sonicstate](https://www.sonicstate.com/news/2026/05/21/amyboard-a-2990-programmable-eurorack-module/)] | Xtensa module; quality [O] |
+| VST3 (Windows) | PE x86-64 DLL [A] | PE loader |
+| Korg drumlogue | `.drmlgunit` = stripped ARM ELF shared object [F] | ELF loader |
+| Other logue SDK units (prologue, minilogue xd, NTS-1) | Cortex-M4 unit packages [A] | Unpack, then the Cortex language |
+| SHARC, DSP56300, C6000, FV-1 | – | No Ghidra module [F]; handled case by case [O] |
 
-### 3.3 Deferred until a test proves a need
+### Dynamic analysis (when needed)
 
-These are candidates, not plans:
+L2A has no framework for this; existing tools are used directly:
 
-* Table-shape classifier (sine/window/exponential detection)
-* FunctionID databases built from libDaisy/HAL/CMSIS builds
-* MCP wrapper
-* Single-function emulation harness
-* Firmware container parsers (DfuSe, UF2; REA has them [F:REA])
-* Mach-O thinning and Objective-C metadata for AU plugins
-* Xtensa profiles (AMYboard [O])
-* Audio Lab
+* **Ghidra emulator** for running a single DSP function.
+* **Plugin host, debugger or Frida** for VST3. JUCE 9.0.4 is in Daisy-Seed's `.tools` [F]; the other tools are [A].
+* **Hardware** only by the owner, or with the owner's OK.
 
-## 4. DSP skills that are indispensable for v0.1
+## 3. What gets built (v0.1)
 
-These are written as L2A's own text in `method/`, and nothing is copied from REA's skills. Each skill states what to
-look for, which `l2a query` call proves it, and how to record the finding.
+| # | Part | Notes |
+| --- | --- | --- |
+| 1 | **DSP skills** in `method/` | The main work (§4) |
+| 2 | **`l2a open`** | Opens or imports a target with a small profile (loader, language, base address). Cortex-M profiles also read the vector table |
+| 3 | **`l2a query`** | Overview of functions with size and FP instruction count; decompile; disassemble; xrefs; callers and callees; constants of a function; typed table read (float32 / int16 / Q15 / Q31); value search. Output is bounded; target text is marked untrusted |
+| 4 | **Case template** `case.md` | Target and hash, source, licence and legal note, tool versions, findings table, open questions |
 
-1. **Workflow and findings discipline.** The `observed` / `derived` / `inferred` levels are combined with the authority
-   (artifact, analyst inference, historical reference). The flag **`prior_knowledge: true`** marks any claim based on known public
-   source rather than on this binary (§6.2). Unknowns stay open until they are verified.
-2. **Locating the audio path on Cortex-M/STM32H7.** The chain runs from the vector table to the SAI/DMA IRQ handlers, then
-   to the framework callback and the user audio callback. A useful heuristic is FP-instruction density together with call
-   depth. Library code (HAL, USB, MIDI, UI) is separated off.
-3. **DSP primitive catalogue** with decompiler signatures:
-   * one-pole, biquad, SVF/TPT
-   * comb and allpass with circular buffers (index masking, power-of-two sizes)
-   * fractional delay with interpolation
-   * phase accumulators and LFOs
-   * interpolated table lookups
-   * envelopes and followers
-   * saturation and fast-math approximations (tanh, exp2 and pow polynomials)
-   * denormal guards
-   * fixed-point patterns (`SSAT`, `SMULL`, `SMLAD`)
-4. **Constant interpretation:**
-   * sample-rate-derived constants (2π/fs, 1/fs)
-   * musical constants (2^(1/12), 440, ln 2)
+That is all. Library recognition, version comparison, emulation, debugging and the other heavy lifting are Ghidra and the existing tools.
+More is added only when a real case needs it, for example a table classifier, an MCP wrapper, unpackers, more profiles or the Audio Lab.
+
+## 4. DSP skills
+
+These are the project's own text (nothing copied from REA): guidance, not mandatory procedure.
+
+1. **Workflow.**
+   * Every finding cites binary evidence (address, function, instruction or constant).
+   * Findings are graded *observed*, *derived* or *inferred*; this vocabulary comes from REA [F].
+   * Known public designs may suggest hypotheses but never replace evidence.
+   * Note what was not checked.
+2. **Finding the audio path.**
+   * Cortex-M: vector table, then SAI/DMA interrupt, then the callback.
+   * VST3: `GetPluginFactory`, then the processor, then `process()`.
+   * logue SDK: the unit render entry.
+   * ESP32: the I2S task.
+3. **DSP building blocks.**
+   * filters (one-pole, biquad, SVF)
+   * delays, comb, allpass, interpolation
+   * oscillators, LFOs, tables
+   * envelopes, saturation, fast math
+   * fixed point, SIMD
+4. **Constants.**
+   * sample-rate and musical constants
    * dB and exponential mappings
-   * coefficient sets
-   * **delay-length signatures** (mutually prime or prime sets, for identifying reverbs)
-5. **Reverb and delay structure analysis:**
-   * early reflections, input diffusers, tanks/FDN
-   * modulation of delay taps
-   * damping placement
-   * feedback-matrix recognition
-6. **Parameter and modulation paths:** from the control input (ADC/MIDI/CC) through the smoothing and mapping curves to the
-   DSP parameter. This is needed to state "Decay maps to …" as a finding.
-7. **Verification by recomputation:** extracted coefficients or tables are recomputed offline. No target code is executed in v0.1.
+   * delay-length patterns (reverb fingerprints)
+5. **Reverb and delay structures.**
+   * diffusers, tanks, FDN
+   * modulation, damping, feedback
+6. **Parameter paths.** Knob, MIDI or plugin parameter, then smoothing and mapping, then the DSP value.
+7. **Verification.** Recompute offline; use the emulator or dynamic observation if useful.
 
-## 5. Security and data handling
+## 5. Security (pragmatic)
 
-The owner's rules in §1 apply. The following additions come from this review.
+* **Public repo.** No binaries, firmware, plugins, decompiler output, Ghidra projects or case results. Cases live in
+  `D:\L2A-cases\`. `.gitignore` and a tiny check back this up.
+* **Pinned tools.** Record the hashes of Ghidra and the JDK once and compare them with the official downloads. Where the
+  current `C:\Tools` installs came from is not recorded yet [O]. Install PyGhidra offline. No silent updates.
+* **Target text is data.** Strings and decompiler output can contain injected instructions. REA files are study objects only:
+  never installed, no MCP.
+* **Dynamic runs** only with official vendor files, as a normal user without admin rights, noted in the case. Ghidra extensions or
+  scripts from third parties only after a quick look.
+* **Third-party targets.** The owner notes the legal basis and licence terms in `case.md` first. This is not legal advice.
+* **Codex reviews** L2A code before merges.
 
-| # | Rule | Reason |
-| --- | --- | --- |
-| S1 | Cases live in `D:\L2A-cases\<case>\` (no spaces, outside every git checkout) | Public repo; avoids path-quoting problems [A] |
-| S2 | **Analysis sessions run with the case directory as their only working area.** Claude Code uses deny rules for paths outside it; Codex uses its workspace sandbox. No access to the Daisy-Seed repo or other Playground projects during a blind run | Blind-test validity and accidental data access [O: exact settings to be defined in M0] |
-| S3 | PyGhidra goes into a dedicated venv using `pip install --no-index --find-links <ghidra>/Ghidra/Features/PyGhidra/pypkg/dist` | No PyPI; same trust anchor as Ghidra [F:local] |
-| S4 | Record SHA-256 of the Ghidra ZIP and the JDK archive and compare them with the official releases (NSA GitHub, Adoptium). **The origin of the existing `C:\Tools` installations is not recorded** | Provenance [O] |
-| S5 | Ghidra runs with a private user-settings and script directory per run, and loads no third-party extensions or scripts (for example SVD loaders or Ghidra MCP plugins) without review | Auto-loaded scripts are code execution [A]; REA isolates HOME/APPDATA similarly [F:REA] |
-| S6 | Target-derived text (strings, symbols, decompiler output) is exported with `untrusted: true`. Skills instruct agents to treat it as data | Prompt injection [F:REA uses the same marking] |
-| S7 | REA is never installed. Its files are read only as untrusted objects of study | Owner decision |
-| S8 | Agent memory files (for example Claude's auto-memory) must not carry case content into other sessions | Contamination and data leakage between cases [A] |
-| S9 | Third-party targets (Ventris/Nemesis): the owner records the legal basis and licence terms in `case.json` **before** extraction | v0.1 §6 |
+## 6. Resource efficiency
 
-## 6. Test strategy
+* **Tokens.** Use targeted queries, bounded output and short case notes; no dumps into the context.
+* **CI.** L2A has no GitHub Actions. If one is added, it runs quick unit tests only, never Ghidra.
+* **Tests.** For a small change, run the affected tests. Before important merges, milestones and releases, run everything,
+  including Ghidra integration. Sanitizers only matter if native code is ever added.
+* **Depth.** The assistant decides how deep to go and notes significant omissions.
 
-### 6.1 Infrastructure test (M1)
+## 7. Tests
 
-* **Target:** the existing own build `PhysicalModeling-v0.1.0.elf` (with DWARF) and its `.bin` [F:repo]. It is not blind.
-* **Checks:**
-  * PyGhidra starts from the offline venv.
-  * The ELF imports with `ARM:LE:32:Cortex`.
-  * The raw `.bin` imports at base `0x24000000`. The ELF shows `.isr_vector` at `0x24000000`, entry `0x24000749` (Thumb), and `.text` of about 134 KB [F:repo].
-  * The audio callback decompiles.
-  * Wall time and memory.
-* **Result:** MEASURED / NOT MEASURED per check. This is the go/no-go decision for PyGhidra on Windows.
+1. **Infrastructure test.**
+   * PyGhidra installs offline.
+   * `PhysicalModeling-v0.1.0.elf` and `.bin` import (base `0x24000000`, entry `0x24000749`) [F].
+   * One function decompiles.
+   * Start-up time is measured.
+   * Bonus: one drumlogue unit [F].
+2. **Rings/Torus with Cloud Reverb.**
+   * The image `physical-modeling-fx-ambient` is built once in the Daisy-Seed project; it does not exist yet [F].
+   * The analysis uses only the `.bin`, without the sources, build map or symbols. Every finding cites binary evidence.
+   * Afterwards, compare with the source: correct, partly correct, wrong, or missed. The Cloud Reverb is the most interesting part,
+     because there is no public reference for it.
+3. **Optional: Source Audio Ventris/Nemesis.**
+   * Firmware comes through the Neuro Desktop app
+     [F: [bonedo.de](https://www.bonedo.de/artikel/neue-firmware-fuer-das-source-audio-ventris-dual-reverb-pedal),
+     [Source Audio](https://www.sourceaudio.net/blog-navigating-the-neuro-desktop-with-the-ventris-dual-reverb.html)].
+   * The CPU and the format are unknown [O].
+   * Order: legal note, then a feasibility check, then analysis.
 
-### 6.2 Main test: Rings/Torus with Cloud Reverb (M4–M5)
+## 8. Not part of L2A
 
-**Suitability: yes, with three corrections.**
+* developing instruments, effects, firmware or reimplementations
+* installing REA or activating any MCP server
+* a sandbox framework, a GUI, or automatic algorithm recognition
 
-Strengths:
+## 9. Review answers in short
 
-* It is a real product image: libDaisy, HAL, MIDI, four voices, six models, a modulation matrix and the Ambient reverb.
-* It is the owner's own code, so there is no legal question. The full ground truth is available.
-* Base address `0x24000000` is non-standard: the bootloader loads the image into AXI SRAM [F:repo]. That makes it a realistic import challenge.
-
-Problems and corrections:
-
-1. **Prior-knowledge contamination.** The Rings/Torus DSP is published MIT source (Mutable Instruments, stmlib) [F:repo: `third_party/stmlib/LICENSE`]
-   and widely known to language models [A]. An agent may *recognise* the resonator instead of reconstructing it.
-   → Score the Rings part and the **own Cloud Reverb** (`effects/reverb`, the owner's design) separately. The Cloud Reverb is the actual
-   capability test, and `prior_knowledge` claims are counted separately.
-2. **Source access.** The analysing session must not be able to read the Daisy-Seed repository (S2), its memory, or the build map.
-   It gets only `target.bin` and the case manifest.
-3. **The composed image does not exist yet.** `physical-modeling-fx-ambient` is defined in `projects.mk`, but no
-   `build/fx-ambient` exists [F:repo]. → In M4, a separate preparation session with repo access builds it at a recorded commit.
-   That session produces `objcopy -O binary`, the SHA-256 and the sealed answer key.
-
-Test design:
-
-* **Runs.** Each run uses a fresh agent session and a fresh case directory:
-  * **A** – baseline: Ghidra plus agent, without `method/` and `l2a export/query`.
-  * **B** – L2A.
-  * **C** – optionally, the same as B on the ELF with symbols, as an upper bound that separates tool limits from stripping.
-* **Answer key.** About 20–30 checkable facts, written before the runs. Examples:
-  * sample rate and block size
-  * voice count and model list
-  * Cloud mode decay mapping (logarithmic, 1–45 s) and damping range (14,000–400 Hz) [F:repo: `docs/MODULAR_COMPONENTS.md`]
-  * reverb buffer sizes
-  * delay lengths and allpass count
-  * location of the dry/wet mix
-* **Metrics.**
-  * facts recovered correctly
-  * wrong claims marked `observed` (target: 0)
-  * `prior_knowledge` claims
-  * unknowns left open correctly
-  * time
-  * reproducibility of the exports
-* **Last step:** compare with the source and record the lessons learned in the case.
-
-### 6.3 Optional practice test: Source Audio Ventris / Nemesis (M7)
-
-* Firmware updates are distributed through the Neuro Desktop editor or its installer, not as a standalone file
-  [F:web: [bonedo.de](https://www.bonedo.de/artikel/neue-firmware-fuer-das-source-audio-ventris-dual-reverb-pedal),
-  [Source Audio blog](https://www.sourceaudio.net/blog-navigating-the-neuro-desktop-with-the-ventris-dual-reverb.html),
-  [Nemesis manual](https://manuals.plus/source-audio/nemesis-delay-effects-pedal-manual)].
-* Processor, container format and encryption are unknown [O]. If the DSP is not covered by Ghidra (no SHARC, DSP56300 or C6000 module [F:local]),
-  static analysis may be impossible without third-party processor modules.
-* Gate: the legal basis comes first (S9), then a feasibility check by static inspection of the installer, without running it.
-  Only after that comes analysis.
-
-## 7. Explicitly later
-
-* MCP server or wrapper: only if CLI and file hand-over prove to be a bottleneck
-* Single-function emulation (`EmulatorHelper`): executes target code; needs its own security review
-* Audio Lab (measurement)
-* Additional architecture profiles (Xtensa/AMYboard, x86-64 PE plugins), Mach-O handling, container parsers
-* Selective REA code adoption (see [REA_Architecture_Review.md §5](REA_Architecture_Review.md))
-* GUI, automatic algorithm recognition, reimplementation work
-
-## 8. Review answers in short
-
-| Question | Answer |
-| --- | --- |
-| 1. Lean enough? | Yes, after one correction: drop Ghidra script plumbing in favour of PyGhidra, and keep tools to the seven small components in §3.1. Universality comes from pass-through, not wrappers |
-| 2. REA functions available via existing APIs? | Almost all of REA's Ghidra operations are thin wrappers over the Ghidra API, which PyGhidra exposes directly ([review §3](REA_Architecture_Review.md)) |
-| 3. What to build ourselves? | DSP skills, the case/findings format, profile import with vector-table seeding, export with instruction mix, typed query |
-| 4. Selective REA code adoption? | In the MVP, only the evidence/unknowns **vocabulary** (MIT, attributed). REA code is a reference for edge cases, not a source to copy |
-| 5. Overlooked risks? | Prior-knowledge contamination, agent file access to the source, provenance of the installed Ghidra/JDK, `.bat` argument handling, auto-loaded Ghidra scripts, memory files across cases, Ventris firmware possibly being on a non-Ghidra DSP |
-| 6. Ghidra on Windows feasible? | Very likely, with reasonable effort: everything needed is installed and offline-installable [F:local]. It is **NOT MEASURED** until M1 |
-| 7. Indispensable DSP capabilities? | The seven skills in §4. Tool-wise, only the FP/DSP instruction counts and typed array reads |
-| 8. Rings/Torus test suitable? | Yes, with the three corrections in §6.2: separate scoring for the Cloud Reverb, isolated sessions, and the composed image built in a separate preparation step |
+1. **Lean enough?** Yes: four small parts, with the skills as the main work.
+2. **REA functions via existing APIs?** Almost all of REA's Ghidra operations are plain Ghidra API calls ([review §3](REA_Architecture_Review.md)).
+3. **What to build ourselves?** Skills, `open`, `query` and the case template.
+4. **Take over REA code?** No. Only its evidence vocabulary.
+5. **Overlooked risks?**
+   * Tool provenance
+   * Auto-loaded Ghidra scripts
+   * Prior knowledge replacing evidence
+   * Third-party code in dynamic runs
+   * DSP chips without a Ghidra module
+6. **Ghidra on Windows?** Very likely fine; everything is installed. NOT MEASURED until the infrastructure test.
+7. **Indispensable DSP capabilities?** The seven skills and the targeted queries.
+8. **Rings/Torus test suitable?** Yes, in the simple form above.

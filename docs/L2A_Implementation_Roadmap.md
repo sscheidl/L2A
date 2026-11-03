@@ -10,8 +10,8 @@ Owners: **C** = Claude Code, **X** = Codex, **O** = owner.
 | --- | --- | --- | --- |
 | 1 | Approve concept v0.3; Codex reviews it | O, X | PR merged |
 | 2 | Note the Ghidra and JDK hashes and compare them with the official downloads | O (C prepares the commands) | `docs/TOOLCHAIN.md` |
-| 3 | **Short PyGhidra check**: Ghidra is already known to run on Windows. Install PyGhidra offline, open the Daisy ELF or `.bin`, decompile one function, note the start-up time | C | Short note |
-| 4 | **Core**: `l2a open` (with a Cortex-M profile and generic ELF/PE); `l2a query` with compact default output, `--max-lines`/`--offset` sections and `--out` to a file; `.gitignore` check. The `case.md` template is already in `templates/` | C, then X review | Affected tests green; review comments resolved |
+| 3 | **Short PyGhidra check**. Ghidra is already known to run on Windows. Steps: install PyGhidra offline; import the raw `.bin` with explicit `BinaryLoader`, `ARM:LE:32:Cortex` and base `0x24000000`, and verify the base, language and reset vector; import the ELF; save, reopen without re-analysis, decompile one function; note the import and reopen times | C | Short note per check |
+| 4 | **Core**: `l2a open` (import and analyse once into `<case>\ghidra\`, with a Cortex-M profile and generic ELF/PE, and `--reimport`); `l2a query` that reuses the saved project, with compact default output, `--max-lines`/`--offset` sections and `--out` restricted to the case folder; `.gitignore` check. The `case.md` template is already in `templates/` | C, then X review | Affected tests green; review comments resolved |
 | 5 | **DSP skills** in `method/`: workflow, audio path, building blocks, constants, reverb/delay, parameter paths, verification | C, then X review | Skills usable by both agents |
 | 6 | **Rings/Torus with Cloud Reverb**: build `physical-modeling-fx-ambient` in the Daisy-Seed project; analyse the `.bin` only; compare with the source afterwards | C, O | Comparison note: correct / partly / wrong / missed |
 | 7 | **Look back**: which skills and queries helped, what is missing, what to drop | O, C, X | Short decision list |

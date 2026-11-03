@@ -19,10 +19,10 @@
 | SHA-256 | |
 | Source / provenance | own build at commit … / vendor download URL / … |
 | Platform | for example Daisy Seed3 (STM32H750, Cortex-M7) |
-| Ghidra import | loader, language, base address, extra regions |
+| Ghidra import | loader, language, base address, extra regions, analysis options; project `ghidra\<case>.gpr` |
 | Licence and legal note | own code / open source (licence) / third party: legal basis noted by the owner |
 | Tools | Ghidra 12.1.4, JDK 21.0.12, L2A version … |
-| Rules for this case | for example "do not consult original sources" |
+| Rules for this case | Default: source code may be used. Restrictions here, for example "do not consult original sources" (Rings/Torus test) |
 
 ## Findings
 

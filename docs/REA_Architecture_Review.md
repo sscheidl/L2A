@@ -73,7 +73,8 @@ Most of REA's Ghidra lane is a thin, contract-wrapped layer over the Ghidra API.
 ## 4. What L2A must build itself (minimal)
 
 1. DSP skills (`method/`): the main deliverable.
-2. `l2a open`: a small profile with loader, language and base. Cortex-M profiles also seed from the vector table with the Thumb bit.
+2. `l2a open`: a small profile with loader, language and base. It imports and analyses once into a persistent Ghidra project that
+   later queries reuse. Cortex-M profiles also seed from the vector table with the Thumb bit.
 3. `l2a query`: targeted retrieval. Output is compact by default; long results come in sections or as a file. It covers:
    * an overview with FP instruction counts
    * decompile and disassemble

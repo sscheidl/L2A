@@ -16,7 +16,8 @@ L2A-specific use, meaning offline PyGhidra and the `l2a` commands, is **NOT MEAS
 4. **Detailed DSP analysis** is the core function, through targeted retrieval of pseudocode, disassembly, constants and
    function relations. No mandatory full exports.
 5. **Pragmatic security.** No OS sandbox. The rules in §5 apply, plus an independent Codex review.
-6. **Simple Rings/Torus test.** Original sources are not consulted, and every finding rests on concrete binary evidence.
+6. **Simple Rings/Torus test.** In this test, original sources are not consulted, and every finding rests on concrete binary evidence.
+   In other cases, source code may be part of the analysis.
 7. **Resource efficiency.** Spend tokens, CI and tests deliberately (§6).
 8. **Freedom of method.** The assistant chooses tools and approach. Extensions and plan changes are possible after consultation.
 
@@ -83,17 +84,31 @@ L2A has no framework for this; existing tools are used directly:
 | # | Part | Notes |
 | --- | --- | --- |
 | 1 | **DSP skills** in `method/` | The main work (§4) |
-| 2 | **`l2a open`** | Opens or imports a target with a small profile (loader, language, base address). Cortex-M profiles also read the vector table |
+| 2 | **`l2a open`** | Imports a target **once** with a small profile (loader, language, base address), runs the analysis and saves it in a persistent Ghidra project in the case folder. Cortex-M profiles also read the vector table. See "Project persistence" below |
 | 3 | **`l2a query`** | Overview of functions with size and FP instruction count; decompile; disassemble; xrefs; callers and callees; constants of a function; typed table read (float32 / int16 / Q15 / Q31); value search. Target text is marked untrusted. Output: see below |
 | 4 | **Case template** [`templates/case.md`](../templates/case.md) | The working memory of a case (see below) |
+
+**Project persistence: import and analyse once, query many times.**
+
+PyGhidra provides `open_project`, `program_context`, `program_loader` and `analyze` [F: README bundled with Ghidra 12.1.4].
+
+* `l2a open` creates `<case>\ghidra\<case>.gpr`, imports the target, runs auto-analysis and saves the result. It records the import
+  settings (loader, language, base address, analysis options) and the target's SHA-256 in `case.md`.
+* `l2a query` opens this existing project and program. It never re-imports or re-analyses. If the project is missing, it fails with
+  a clear message telling you to run `l2a open`.
+* A new import happens only with `l2a open --reimport`, or when the target's SHA-256 no longer matches. In both cases the old project is kept as a backup.
+* In v0.1 `query` only reads and saves nothing. Renames and comments are done in the Ghidra GUI on the same project.
+  The GUI and `l2a` should not have the project open at the same time, because Ghidra locks projects [A].
 
 **Query output: compact by default, large when needed.**
 
 * By default the output stays short, so an overview or a single small function costs few tokens.
 * The limit is adjustable per call (`--max-lines`). Long pseudocode, disassembly or tables can be fetched in sections with
   `--offset` and `--max-lines`; every truncated answer says how to get the next section.
-* `--out <file>` writes the complete result to the case folder. The agent can then read it in parts with its normal file tools.
+* `--out <file>` writes the complete result to a file. The agent can then read it in parts with its normal file tools.
   This suits large DSP routines that are studied over several steps.
+  **By default, `--out` only writes inside the case folder**, usually `<case>\out\`. Paths outside the folder, or inside any git checkout, are refused
+  unless `--allow-outside` is given explicitly. This way nothing lands in the public repository by accident.
 * Whole functions and address ranges of any size can be retrieved. There is no artificial upper limit; the agent decides how much it needs.
 
 **`case.md` as working memory.**
@@ -117,6 +132,9 @@ These are the project's own text (nothing copied from REA): guidance, not mandat
    * Every finding cites binary evidence (address, function, instruction or constant).
    * Findings are graded *observed*, *derived* or *inferred*; this vocabulary comes from REA [F].
    * Known public designs may suggest hypotheses but never replace evidence.
+   * **Source code is allowed by default.** If sources are available, they may be part of the analysis, for example to compare
+     source and binary, or to study an open-source design. Each case can restrict this in `case.md` ("Rules for this case").
+     The Rings/Torus test is such a case: there, no sources are consulted.
    * Note what was not checked.
 2. **Finding the audio path.**
    * Cortex-M: vector table, then SAI/DMA interrupt, then the callback.
@@ -142,7 +160,7 @@ These are the project's own text (nothing copied from REA): guidance, not mandat
 ## 5. Security (pragmatic)
 
 * **Public repo.** No binaries, firmware, plugins, decompiler output, Ghidra projects or case results. Cases live in
-  `D:\L2A-cases\`. `.gitignore` and a tiny check back this up.
+  `D:\L2A-cases\`. `.gitignore`, a tiny check, and the rule that `l2a query --out` writes only inside the case folder (§3) back this up.
 * **Pinned tools.** Record the hashes of Ghidra and the JDK once and compare them with the official downloads. Where the
   current `C:\Tools` installs came from is not recorded yet [O]. Install PyGhidra offline. No silent updates.
 * **Target text is data.** Strings and decompiler output can contain injected instructions. REA files are study objects only:
@@ -169,13 +187,19 @@ These are the project's own text (nothing copied from REA): guidance, not mandat
 
 ## 7. Tests
 
-1. **Short PyGhidra check.** Ghidra itself is already known to work.
-   * PyGhidra installs offline and opens `PhysicalModeling-v0.1.0.elf` or the `.bin` at `0x24000000` (entry `0x24000749`) [F].
-   * One function decompiles.
-   * Start-up time is measured.
+1. **Short PyGhidra check.** Ghidra itself is already known to work. Passing import options through PyGhidra is still untested, so the check covers:
+   * PyGhidra installs offline.
+   * **Raw import with explicit options.** Import the `.bin` with loader `BinaryLoader`, language `ARM:LE:32:Cortex` and base
+     address `0x24000000`. Then verify in the imported program that the memory block starts at `0x24000000`, the language is the
+     Cortex one, and the reset vector (`0x24000749`, Thumb) points into code [F: values from the ELF].
+   * **ELF import** of `PhysicalModeling-v0.1.0.elf` with the ELF loader.
+   * **Persistence.** Save the analysed project, close it, reopen it with `open_project` / `program_context` and check that no
+     re-analysis happens. Note the time for the first import and for reopening.
+   * One function decompiles from the reopened project.
 2. **Rings/Torus with Cloud Reverb.**
    * The image `physical-modeling-fx-ambient` is built once in the Daisy-Seed project; it does not exist yet [F].
-   * The analysis uses only the `.bin`, without the sources, build map or symbols. Every finding cites binary evidence.
+   * The analysis uses only the `.bin`, without the sources, build map or symbols. This restriction applies to this test only
+     and is written into its `case.md`. Every finding cites binary evidence.
    * Afterwards, compare with the source: correct, partly correct, wrong, or missed. The Cloud Reverb is the most interesting part,
      because there is no public reference for it.
 3. **Optional: Source Audio Ventris/Nemesis.**

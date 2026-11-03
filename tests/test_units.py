@@ -198,6 +198,35 @@ class ValuesTest(unittest.TestCase):
         self.assertEqual(values.float_bits_hint(0), "")
 
 
+class PlaceTargetTest(unittest.TestCase):
+    def test_rebuilt_target_replaces_copy_and_keeps_backup(self):
+        import io
+        import tempfile
+        from contextlib import redirect_stdout
+        from pathlib import Path
+
+        from l2a.case import Case
+
+        with tempfile.TemporaryDirectory() as tmp, redirect_stdout(io.StringIO()):
+            tmp = Path(tmp)
+            src = tmp / "build" / "fw.bin"
+            src.parent.mkdir()
+            src.write_bytes(b"v1")
+            case = Case.at(tmp / "case")
+            dest = cli._place_target(case, src, "s1")
+            self.assertEqual(dest.read_bytes(), b"v1")
+            self.assertEqual(cli._place_target(case, src, "s2"), dest)  # unchanged: no backup
+            self.assertFalse((case.root / "target-backup-s2").exists())
+            src.write_bytes(b"v2")  # rebuilt at the same path
+            self.assertEqual(cli._place_target(case, src, "s3").read_bytes(), b"v2")
+            self.assertEqual((case.root / "target-backup-s3" / "fw.bin").read_bytes(), b"v1")
+            src.write_bytes(b"v3")  # a second rebuild with the same timestamp gets its own backup folder
+            cli._place_target(case, src, "s3")
+            self.assertEqual((case.root / "target-backup-s3-2" / "fw.bin").read_bytes(), b"v2")
+            inside = case.target_dir / "fw.bin"
+            self.assertEqual(cli._place_target(case, inside, "s4"), inside)  # already in the case
+
+
 class QueryArgvTest(unittest.TestCase):
     def test_split(self):
         case, prog, queries = cli.split_query_argv(

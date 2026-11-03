@@ -42,7 +42,10 @@ l2a open <case> <target> --profile <profile> [--base ADDR] [--language ID] [--co
   versions and timings go into `<case>\ghidra\l2a-imports.json`. A summary table is written into `case.md`; if `case.md`
   is missing, it is first created from `templates/case.md`.
 * Running `l2a open` again with an unchanged target does nothing. A new import happens with `--reimport`, or automatically
-  when the target's SHA-256 has changed. In both cases the old project is first copied to `<case>\ghidra-backup-<time>\`.
+  when the target's SHA-256 has changed, for example after a rebuild at the same path. In both cases the old project is
+  first copied to `<case>\ghidra-backup-<time>\`, and an older target copy to `<case>\target-backup-<time>\`.
+* The vector table and the analysis run before the new program is saved. If either fails, the previous program and its
+  record stay as they were.
 * Analysis uses Ghidra's default options.
 
 ## `l2a query`

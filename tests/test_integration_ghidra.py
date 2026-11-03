@@ -130,6 +130,20 @@ class GhidraIntegrationTest(unittest.TestCase):
         finally:
             project.close()
 
+    def test_zy_failed_reimport_leaves_project_and_record(self):
+        from l2a.case import Case
+
+        c = Case.at(self.case)
+        before = c.load_records()[BIN.name]
+        # A wrong base passes the block check, but the vector table no longer points into code.
+        code, out, err = run("open", self.case, str(BIN), "--profile", "cortex-m", "--base", "0x08000000", "--reimport")
+        self.assertEqual(code, 2, out + err)
+        self.assertIn("no valid Cortex-M vector table", err)
+        self.assertEqual(c.load_records()[BIN.name], before)
+        out = self.q("disasm", "reset_handler", "--count", "1", "--then", "info")
+        self.assertIn("24000748", out)
+        self.assertIn(f"functions: {before['function_count']}", out)
+
     def test_zz_reimport_keeps_backup(self):
         code, out, err = run("open", self.case, str(BIN), "--profile", "cortex-m", "--base", "0x24000000", "--reimport")
         self.assertEqual(code, 0, out + err)

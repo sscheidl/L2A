@@ -40,14 +40,27 @@ def open_parser() -> argparse.ArgumentParser:
     return p
 
 
-def _place_target(case: Case, target: Path) -> Path:
+def _backup_dir(case: Case, kind: str, stamp: str) -> Path:
+    """A new, unused `<case>/<kind>-backup-<stamp>[-n]` path (two runs may share a timestamp)."""
+    path, n = case.root / f"{kind}-backup-{stamp}", 1
+    while path.exists():
+        n += 1
+        path = case.root / f"{kind}-backup-{stamp}-{n}"
+    return path
+
+
+def _place_target(case: Case, target: Path, stamp: str) -> Path:
+    """Copy an outside target into <case>/target/. An older copy with other content (a rebuild) is kept as a backup."""
     if casemod.is_within(target, case.root):
         return target
     dest = case.target_dir / target.name
     if dest.exists():
-        if casemod.sha256_file(dest) != casemod.sha256_file(target):
-            raise CaseError(f"{dest} exists with different content; rename the target or remove the old copy")
-        return dest
+        if casemod.sha256_file(dest) == casemod.sha256_file(target):
+            return dest
+        backup = _backup_dir(case, "target", stamp) / target.name
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(dest, backup)
+        _log(f"target content changed: old copy kept as {backup}")
     case.target_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(target, dest)
     _log(f"copied target to {dest}")
@@ -63,7 +76,8 @@ def cmd_open(argv: list[str]) -> int:
     if not src.is_file():
         raise CaseError(f"target not found: {src}")
     case.root.mkdir(parents=True, exist_ok=True)
-    target = _place_target(case, src)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    target = _place_target(case, src, stamp)
     sha = casemod.sha256_file(target)
     name = a.name or target.name
     records = case.load_records()
@@ -73,7 +87,7 @@ def cmd_open(argv: list[str]) -> int:
         _log(f"{name} is already imported (SHA-256 matches); nothing to do. Use --reimport to import again.")
         return 0
     if case.project_file.exists() and (rec or a.reimport):
-        backup = case.root / f"ghidra-backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+        backup = _backup_dir(case, "ghidra", stamp)
         shutil.copytree(case.ghidra_dir, backup)
         reason = "--reimport" if a.reimport else "target SHA-256 changed"
         _log(f"{reason}: old project kept as {backup}")
@@ -92,11 +106,9 @@ def cmd_open(argv: list[str]) -> int:
             problems = ghidra.verify(program, settings, target.stat().st_size)
             if problems:
                 raise CaseError("import does not match the requested settings, nothing saved:\n  " + "\n  ".join(problems))
-            old = ghidra.domain_file(project, name)
-            if old is not None:
-                old.delete()
-            results.save(ghidra.monitor())
             t_import = time.perf_counter() - t
+            # Vector table and analysis run on the unsaved program. Only when both succeed does it replace an
+            # older program of the same name, so a failure leaves the project and the record unchanged.
             vt = None
             if settings.profile.vector_table:
                 vt = ghidra.apply_vector_table(program, settings.base)
@@ -105,7 +117,10 @@ def cmd_open(argv: list[str]) -> int:
             _log(f"analysing {name} (default analysis options) ...")
             ghidra.analyze(program)
             t_analyze = time.perf_counter() - t
-            program.getDomainFile().save(ghidra.monitor())
+            old = ghidra.domain_file(project, name)
+            if old is not None:
+                old.delete()
+            results.save(ghidra.monitor())
             rec = {
                 "target": str(target.relative_to(case.root)),
                 "sha256": sha,

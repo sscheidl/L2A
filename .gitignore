@@ -1,0 +1,40 @@
+# L2A is a PUBLIC repository. Proprietary targets, decompiler output and
+# case results must never be committed (SPEC_v0.2.md, section 6).
+# Private cases live outside this repository (default: ../L2A-cases/).
+
+# Case data, if someone creates it inside the checkout by mistake
+cases/
+private/
+targets/
+work/
+*.gpr
+*.rep/
+*.gzf
+
+# Typical firmware and binary formats (test fixtures must be generated from
+# source by the build, never committed as binaries)
+*.bin
+*.hex
+*.dfu
+*.uf2
+*.syx
+*.elf
+*.axf
+*.dll
+*.dylib
+*.so
+*.vst3
+*.component
+*.clap
+*.aaxplugin
+*.exe
+
+# Decompiler and analysis dumps
+*.decomp.c
+*.ghidra.json
+*.evidence.json
+
+# Tooling
+__pycache__/
+.venv/
+node_modules/

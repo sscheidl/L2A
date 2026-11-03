@@ -10,7 +10,7 @@ Owners: **C** = Claude Code, **X** = Codex, **O** = owner.
 | --- | --- | --- | --- |
 | 1 | Approve concept v0.3; Codex reviews it | O, X | PR merged |
 | 2 | Note the Ghidra and JDK hashes and compare them with the official downloads | O (C prepares the commands) | `docs/TOOLCHAIN.md` |
-| 3 | **Infrastructure test**: offline PyGhidra install; import the Daisy ELF and the `.bin` at `0x24000000`; decompile one function; measure start-up time; bonus: one drumlogue unit. Uses a throw-away script in `D:\L2A-cases\infra-test\` | C | Go/no-go note |
+| 3 | **Short PyGhidra check**: Ghidra is already known to run on Windows. Install PyGhidra offline, open the Daisy ELF or `.bin`, decompile one function, note the start-up time | C | Short note |
 | 4 | **Core**: `l2a open` (with a Cortex-M profile and generic ELF/PE), `l2a query`, the `case.md` template, `.gitignore` check | C, then X review | Affected tests green; review comments resolved |
 | 5 | **DSP skills** in `method/`: workflow, audio path, building blocks, constants, reverb/delay, parameter paths, verification | C, then X review | Skills usable by both agents |
 | 6 | **Rings/Torus with Cloud Reverb**: build `physical-modeling-fx-ambient` in the Daisy-Seed project; analyse the `.bin` only; compare with the source afterwards | C, O | Comparison note: correct / partly / wrong / missed |
@@ -21,7 +21,7 @@ Tests:
 
 * For small changes, run only the affected tests.
 * Before important merges and milestones, run the full local suite including Ghidra.
-* Add no GitHub Actions without approval.
+* GitHub Actions may be used normally (public repo). Unit tests run on pushes and PRs; nothing in CI needs proprietary files.
 
 Not on the roadmap:
 

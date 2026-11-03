@@ -4,7 +4,8 @@ Status: **concept, not approved for implementation** (revision 2, 2026-11-03). T
 concept stays deliberately small. It supersedes [SPEC_v0.2.md](SPEC_v0.2.md).
 
 Labels: **[F]** fact checked in source or files (REA at `4b961e3`, the owner's machine, the owner's repos, or a cited web page),
-**[A]** assumption, **[O]** open. Nothing has been run yet, so all Ghidra capabilities on this machine are **NOT MEASURED**.
+**[A]** assumption, **[O]** open. Ghidra runs locally on Windows; the owner confirmed this in earlier projects (reported 2026-11-03).
+L2A-specific use, meaning offline PyGhidra and the `l2a` commands, is **NOT MEASURED** yet.
 
 ## 1. Decisions
 
@@ -134,19 +135,18 @@ These are the project's own text (nothing copied from REA): guidance, not mandat
 ## 6. Resource efficiency
 
 * **Tokens.** Use targeted queries, bounded output and short case notes; no dumps into the context.
-* **CI.** L2A has no GitHub Actions. If one is added, it runs quick unit tests only, never Ghidra.
+* **CI.** GitHub Actions may be used normally, because the public repo has no special restrictions. Keep workflows sensible: unit tests
+  on pushes and PRs, and nothing that needs proprietary files.
 * **Tests.** For a small change, run the affected tests. Before important merges, milestones and releases, run everything,
   including Ghidra integration. Sanitizers only matter if native code is ever added.
 * **Depth.** The assistant decides how deep to go and notes significant omissions.
 
 ## 7. Tests
 
-1. **Infrastructure test.**
-   * PyGhidra installs offline.
-   * `PhysicalModeling-v0.1.0.elf` and `.bin` import (base `0x24000000`, entry `0x24000749`) [F].
+1. **Short PyGhidra check.** Ghidra itself is already known to work.
+   * PyGhidra installs offline and opens `PhysicalModeling-v0.1.0.elf` or the `.bin` at `0x24000000` (entry `0x24000749`) [F].
    * One function decompiles.
    * Start-up time is measured.
-   * Bonus: one drumlogue unit [F].
 2. **Rings/Torus with Cloud Reverb.**
    * The image `physical-modeling-fx-ambient` is built once in the Daisy-Seed project; it does not exist yet [F].
    * The analysis uses only the `.bin`, without the sources, build map or symbols. Every finding cites binary evidence.
@@ -177,6 +177,7 @@ These are the project's own text (nothing copied from REA): guidance, not mandat
    * Prior knowledge replacing evidence
    * Third-party code in dynamic runs
    * DSP chips without a Ghidra module
-6. **Ghidra on Windows?** Very likely fine; everything is installed. NOT MEASURED until the infrastructure test.
+6. **Ghidra on Windows?** Yes. It runs locally, as confirmed by the owner from earlier projects. Only the offline PyGhidra
+   setup still needs a short check.
 7. **Indispensable DSP capabilities?** The seven skills and the targeted queries.
 8. **Rings/Torus test suitable?** Yes, in the simple form above.

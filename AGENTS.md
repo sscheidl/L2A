@@ -32,7 +32,7 @@ holds documentation only.
 * **Resource efficiency.**
   * Use targeted queries and bounded output, never full dumps into the context.
   * For small changes, run only the affected tests. Run the full local suite before important merges, milestones and releases.
-  * Add no GitHub Actions workflows without approval.
+  * GitHub Actions may be used normally (public repo). Keep CI free of proprietary files.
   * Decide the depth of a check yourself, and document significant omissions.
 * **Report only what was observed.** Mark results `MEASURED` (with date) or `NOT MEASURED`.
   In documents, label claims as confirmed facts, assumptions or open questions.

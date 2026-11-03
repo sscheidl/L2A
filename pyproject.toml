@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "l2a"
+version = "0.1.0"
+description = "L2A - Listen to Anything: PyGhidra-based analysis helpers (open, query)"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+# Installed offline from the wheels shipped with the pinned Ghidra (docs/TOOLCHAIN.md).
+dependencies = ["pyghidra==3.1.0"]
+
+[project.scripts]
+l2a = "l2a.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

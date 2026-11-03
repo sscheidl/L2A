@@ -23,6 +23,7 @@ implementation. Hardware and listening results are NOT MEASURED.
 | [REA_Architecture_Review.md](docs/REA_Architecture_Review.md) | REA functions and interfaces versus existing tool APIs; selective adoption |
 | [L2A_Implementation_Roadmap.md](docs/L2A_Implementation_Roadmap.md) | Small step plan (8 steps) |
 | [templates/case.md](templates/case.md) | Case template: the working memory shared by Claude and Codex |
+| [TOOLCHAIN.md](docs/TOOLCHAIN.md) | Pinned Ghidra, JDK and Python versions with hashes and signature checks |
 | [REA_STATIC_REVIEW_4b961e3.md](docs/REA_STATIC_REVIEW_4b961e3.md) | Static review of REA with file and line evidence |
 | [SPEC_v0.2.md](docs/SPEC_v0.2.md), [REA_DECISION_MATRIX.md](docs/REA_DECISION_MATRIX.md), [RISKS_AND_OPEN_QUESTIONS.md](docs/RISKS_AND_OPEN_QUESTIONS.md), [CODEX_BRIEF_v0.1.md](docs/CODEX_BRIEF_v0.1.md) | Superseded v0.2 documents, kept for traceability |
 | [history/CONCEPT_v0.1.de.md](docs/history/CONCEPT_v0.1.de.md) | Original concept v0.1 (German) |
@@ -39,4 +40,7 @@ Agent rules: [AGENTS.md](AGENTS.md).
 
 ## Licence
 
-Not yet chosen. If REA's Evidence vocabulary is adopted, its MIT notice must be kept.
+[MIT](LICENSE).
+
+L2A's evidence wording (*observed / derived / inferred*, open vs resolved unknowns) is inspired by
+[REA](https://github.com/morluto/rea) (MIT). No REA code is included.

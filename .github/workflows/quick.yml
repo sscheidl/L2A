@@ -1,0 +1,32 @@
+# Quick checks only: repository guard and fast unit tests. No Ghidra, no proprietary files.
+# The full Ghidra integration runs locally or manually (docs/L2A_Concept_v0.3.md, section 6).
+# Approved by the owner on 2026-11-03; changes to this workflow need a new approval.
+name: Quick
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quick-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repository guard
+        run: python3 scripts/check_repo.py
+      - name: Unit tests (without Ghidra)
+        run: |
+          if [ -d tests ]; then
+            python3 -m unittest discover -s tests -v
+          else
+            echo "No tests yet."
+          fi

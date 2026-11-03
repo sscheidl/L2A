@@ -29,7 +29,8 @@ holds documentation only.
   * normal user, no administrator rights
   * log each run in the case
   * hardware actions only by the owner or with the owner's consent
-* **Pinned tools.** Ghidra and JDK versions and hashes are recorded in `docs/TOOLCHAIN.md` once chosen.
+* **Pinned tools.** Ghidra and JDK versions and hashes are recorded in `docs/TOOLCHAIN.md`.
+  Run `python scripts/check_repo.py` before committing.
   Never update them as a side effect.
 * **Resource efficiency.**
   * Start with compact query output, and fetch long pseudocode or disassembly in sections or via `--out` files when needed.

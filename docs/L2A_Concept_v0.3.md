@@ -1,6 +1,6 @@
 # L2A – Listen to Anything: concept v0.3
 
-Status: **concept, not approved for implementation** (revision 2, 2026-11-03). This is a private hobby project, so the
+Status: **approved by the owner on 2026-11-03** (revision 2, 2026-11-03). This is a private hobby project, so the
 concept stays deliberately small. It supersedes [SPEC_v0.2.md](SPEC_v0.2.md).
 
 Labels: **[F]** fact checked in source or files (REA at `4b961e3`, the owner's machine, the owner's repos, or a cited web page),

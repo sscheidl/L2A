@@ -1,7 +1,7 @@
 # Working in this repository (Codex, Claude, GPT)
 
-Read [docs/L2A_Concept_v0.3.md](docs/L2A_Concept_v0.3.md) first. Until the owner approves it, this repository
-holds documentation only.
+Read [docs/L2A_Concept_v0.3.md](docs/L2A_Concept_v0.3.md) first. The owner approved it on 2026-11-03; implementation follows
+[the roadmap](docs/L2A_Implementation_Roadmap.md).
 
 * **Roles.** Claude Code is the main developer and primary analyst. Codex does the independent security and code review.
 * **Agent independence.** This file is canonical for every agent (`CLAUDE.md` may only include it). Method and skills

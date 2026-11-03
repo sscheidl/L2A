@@ -1,5 +1,7 @@
 # Implementation brief for Codex: L2A v0.1
 
+> **Superseded** (2026-11-03): roles changed. Claude Code is now the main developer and Codex the independent reviewer. See [L2A_Implementation_Roadmap.md](L2A_Implementation_Roadmap.md).
+
 Status: **draft, not released.** Codex starts only after the owner approves
 [SPEC_v0.2.md](SPEC_v0.2.md) and answers Q1–Q5 in [RISKS_AND_OPEN_QUESTIONS.md](RISKS_AND_OPEN_QUESTIONS.md).
 

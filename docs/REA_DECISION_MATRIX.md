@@ -1,5 +1,7 @@
 # Decision matrix: REA take over / adapt / add / omit
 
+> **Superseded** by [REA_Architecture_Review.md §5](REA_Architecture_Review.md) (2026-11-03). Kept for traceability.
+
 Labels: **[C]** confirmed in REA source at `4b961e3` ([review](REA_STATIC_REVIEW_4b961e3.md)),
 **[A]** assumption, **[D]** proposal for the owner.
 

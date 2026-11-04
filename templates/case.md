@@ -19,15 +19,18 @@
 | SHA-256 | |
 | Source / provenance | own build at commit … / vendor download URL / … |
 | Platform | for example Daisy Seed3 (STM32H750, Cortex-M7) |
-| Ghidra import | loader, language, base address, extra regions, analysis options; project `ghidra\<case>.gpr` |
+| Ghidra import | loader, language, base address, extra regions, analysis options; project `ghidra\<case>.gpr` (or "not used": source/script target) |
+| Public upstream | URL, licence and version of published vendor source, or "none found" (searched YYYY-MM-DD) |
+| Reference library | library repository, tag and commit read for [LIB] behaviour, or "none" |
 | Licence and legal note | own code / open source (licence) / third party: legal basis noted by the owner |
 | Tools | Ghidra 12.1.4, JDK 21.0.12, L2A version … |
 | Rules for this case | Default: source code may be used. Restrictions here, for example "do not consult original sources" (Rings/Torus test) |
 
 ## Findings
 
-Every finding cites binary evidence. Levels: **observed** (seen directly), **derived** (follows from observed facts),
-**inferred** (plausible, not yet proven).
+Every finding cites target evidence: an address, function, instruction or constant, or `file:line` for source and script
+targets. Levels: **observed** (seen directly), **derived** (follows from observed facts), **inferred** (plausible, not yet
+proven). Optional ownership tags: **[TGT]** target code, **[API]** fixed by library arguments, **[LIB]** inside the library.
 
 | # | Finding | Level | Evidence (address / function / instruction / constant) | Notes |
 | --- | --- | --- | --- | --- |

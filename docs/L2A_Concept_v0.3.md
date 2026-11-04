@@ -172,7 +172,10 @@ These are the project's own text (nothing copied from REA): guidance, not mandat
 
   Run them as a normal user without admin rights, and note each run in the case. Ghidra extensions or scripts from third parties
   only after a quick look.
-* **Third-party targets.** The owner notes the legal basis and licence terms in `case.md` first. This is not legal advice.
+* **Third-party targets.** First look for vendor-published source and its licence; it often settles the question. Otherwise
+  the owner notes the legal basis and licence terms in `case.md` first. This is not legal advice.
+* **Cloud sessions.** Originals go to a cloud agent session only for our own or openly licensed targets. Results return as one
+  checksummed archive of the case folder. Added 2026-11-04 after the Nebulae V2 case.
 * **Codex reviews** L2A code before merges.
 
 ## 6. Resource efficiency

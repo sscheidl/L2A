@@ -104,7 +104,7 @@ Codex's narrower scopes for D1, D6, D8, D9 and D11 are taken into the proposal t
 
 * The step-5 skills review is now done (review §4: all eight files, 12 points, all 44 constant entries correct).
   The owner accepted D21 on 2026-11-04, so roadmap step 5 counts as reviewed; the corrections follow with D21.
-* [O] Step 8 order (VST3, AMYboard, logue SDK, Ventris/Nemesis) is the owner's call. A VST3 target would test the `pe`
+* [O] Step 8 order (VST3, AMYboard, logue SDK) is the owner's call. A VST3 target would test the `pe`
   profile, which no case has used yet [F].
 * Not counted: time spent per finding, number of queries, or which skill files the sessions actually opened.
 * The Nebulae case had no graded comparison, so its weight here is low.

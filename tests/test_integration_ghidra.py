@@ -109,6 +109,23 @@ class GhidraIntegrationTest(unittest.TestCase):
         self.assertRegex(consts, r"(?m)^\| data +[0-9a-f]{8}  word 0x[0-9a-f]{8}.*  @[0-9a-f]{8}")
         self.assertNotIn(" (x", consts)  # --uses lists every user instead of a count
 
+    def test_consts_uses_lists_every_user(self):
+        def users(text):
+            out = {}
+            for m in re.finditer(r"(?m)^\| (\w+) +(\S+)  .*  @([0-9a-f,]+)(?: \(x(\d+)\))?$", text):
+                kind, key, at, count = m.groups()
+                out[(kind, key)] = (at.split(","), int(count or 1))
+            return out
+
+        default = users(self.q("consts", "main", "--all", "--max-lines", "0", program=ELF.name))
+        every = users(self.q("consts", "main", "--all", "--uses", "--max-lines", "0", program=ELF.name))
+        self.assertEqual(default.keys(), every.keys())
+        self.assertTrue(any(count > 1 for _, count in default.values()), "main has no constant with two users")
+        for key, (first, count) in default.items():
+            at = every[key][0]
+            self.assertEqual(len(at), count, key)  # one address per counted use
+            self.assertEqual(at[0], first[0], key)  # the default shows the first of them
+
     def test_out_file_and_guard(self):
         out = self.q("decompile", "reset_handler", "--out", "reset.c")
         self.assertIn("wrote", out)

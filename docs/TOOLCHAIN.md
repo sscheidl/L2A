@@ -78,10 +78,22 @@ applies: re-pin in a small PR.
 
 ## Re-check
 
-Recompute a manifest and compare it with the recorded one. In Git Bash:
+Recompute a manifest and compare it with the recorded one. In Git Bash, Ghidra:
 
 ```bash
 cd /c/Tools && find ghidra_12.1.4_PUBLIC -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
 ```
 
-A different result means files in the install changed. The per-file manifest in `D:\L2A-cases\_toolchain\` shows which ones.
+xPack objdump tree (paths relative to `.tools`, C sort order, `sha256sum` lines with the `*` binary marker, LF endings).
+The first command must print the manifest hash recorded above; the second checks every listed file:
+
+```bash
+cd "/d/Eigene Dateien/Eigene Dokumente/Playground/Daisy-Seed/.tools" && find xpack-arm-none-eabi-gcc-13.2.1-1.1 -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
+```
+
+```bash
+cd "/d/Eigene Dateien/Eigene Dokumente/Playground/Daisy-Seed/.tools" && sha256sum --quiet -c /d/L2A-cases/_toolchain/xpack-arm-none-eabi-gcc-13.2.1-1.1.sha256
+```
+
+A different hash means files in an install changed, or files were added. The per-file manifest in
+`D:\L2A-cases\_toolchain\` shows which ones.

@@ -45,8 +45,11 @@ A matching coefficient supports a formula; it does not by itself identify the al
   available). Feed it an impulse, a sine or a step. Then compare a measurable property with what the hypothesis
   predicts: impulse response, frequency response, decay time, or modulation rate.
 * Record with each result: the script's hash or version, its inputs and settings, the precision, the measured property
-  and how it was measured (for example the fit range of a decay), and which target paths the model leaves out. If the
-  script changes after a finding is frozen, keep the old output and say so in the session log.
+  and how it was measured (for example the fit range of a decay), and which target paths the model leaves out.
+* Before a script changes after a finding is frozen, keep an unchanged copy of the exact script, its inputs and
+  settings, and its output (for example `out/frozen-<date>/` with a `SHA256SUMS`). A hash alone identifies a lost
+  script but cannot restore it. Later edits are a new working state; say so in the session log. The copy stays in
+  the case, never in the repository.
 * A model result is MEASURED for the model, not for the target. A cause that explains a difference between the model
   and the nominal value stays *inferred* until it is tested.
 * The model is analysis evidence, not a product. L2A builds no effects ([concept §8](../docs/L2A_Concept_v0.3.md)).
@@ -86,8 +89,9 @@ A matching coefficient supports a formula; it does not by itself identify the al
 For a blind test such as roadmap step 6, use this protocol. Ordinary source-assisted cases do not need it.
 
 1. The analyst has not seen the source, symbols or reference before. The case's rules list what must not be opened.
-2. Freeze the findings when the blind phase ends: a copy (`case.blind.md`) with a SHA-256 file. Seal the reference
-   (build files, symbols) outside the case with its own `SHA256SUMS`.
+2. Freeze the findings when the blind phase ends: a copy (`case.blind.md`) with a SHA-256 file. Freeze the verification
+   artefacts the findings rely on (recompute and model scripts, their inputs and outputs) the same way, as described
+   under *Offline model*. Seal the reference (build files, symbols) outside the case with its own `SHA256SUMS`.
 3. The first assessor compares and grades. Corrections never change the frozen file; they are appended.
 4. A second assessor gets a brief that keeps them unanchored: it lists the files they must not read (the first
    grading, status and log entries) until their own grades are saved and hashed.

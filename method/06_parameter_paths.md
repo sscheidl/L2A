@@ -16,9 +16,9 @@ Trace it backwards from the DSP: it is easier than tracing forwards from the kno
 4. Before recording the interpretation, follow the value once to its other readers too: who uses it, and what changes
    when it changes ([7](07_verification.md), *Trace data flow*).
 
-`xrefs` lists the references Ghidra found to an address. Accesses through a base pointer plus an offset
-(`[r4, #0x28]`), aliases and indirect calls do not appear there. An empty `xrefs` list does not prove that nothing
-writes the value. Record the writers you know, which one wins, and the ones you could not resolve.
+`xrefs` lists the references Ghidra found to an address. Ghidra resolves some accesses through a base pointer plus an
+offset (`[r4, #0x28]`), but accesses through computed pointers, aliases and indirect calls **may be missing**. An empty
+`xrefs` list does not prove that nothing writes the value. Record the writers you know, which one wins, and the ones you could not resolve.
 
 ## Sources
 

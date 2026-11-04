@@ -1,8 +1,9 @@
-# Roadmap step 7: look back (draft)
+# Roadmap step 7: look back (decided)
 
-Status: **draft by Claude, 2026-11-04, revised the same day after the Codex review**
-([STEP7_LOOKBACK_REVIEW.md](reviews/STEP7_LOOKBACK_REVIEW.md), PR #14). The owner decides each item in §4. This file
-only proposes. Nothing in it changes `method/`, `l2a` or the toolchain.
+Status: **decided by the owner on 2026-11-04.** Drafted by Claude, revised the same day after the Codex review
+([STEP7_LOOKBACK_REVIEW.md](reviews/STEP7_LOOKBACK_REVIEW.md), PR #14). The owner approved every recommendation in §4:
+16 items to do, 5 deferred. This file records the decisions; the changes to `method/`, `l2a` and the toolchain follow in
+separate PRs.
 
 Labels: **[F]** checked fact, with a case reference; **[A]** assumption; **[O]** open question.
 The case folders stay local (AGENTS.md). This file cites only their names and summary counts.
@@ -59,34 +60,35 @@ Causes marked [A] are plausible mechanisms. The cases do not record the analyst'
 
 Effort: **S** = under an hour with tests, **M** = a few hours, **L** = a day or more. Estimates are assumptions [A].
 All code items follow AGENTS.md: branch, tests, `check_repo.py`, PR, Codex review. Read-only `query` stays read-only.
-The Claude column shows Claude's recommendation after the review; where it changed, the first draft's value is in
+The Owner column records the owner's decision of 2026-11-04. The Claude column shows Claude's recommendation after the review; where it changed, the first draft's value is in
 brackets. Details of the Codex recommendations are in the review, §2 and §3.
 
 | ID | Proposal | Type | Fixes | Effort | Claude | Codex | Owner |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| D1 | Document `xrefs <literal address>` for all users of a literal. Then `disasm` annotates the data references Ghidra resolves (address, word, optional float reading), and `consts --uses` lists all users | method, l2a | E1 | S (note), M (code) | Do | Do, narrower: note first, annotation as convenience |  |
-| D2 | `disasm` decodes the FPv5 `cdp2` encodings as an annotation. This does not repair the decompiler | l2a | E3 | M–L | Defer (was: do) | Defer until D3 leaves a costly gap |  |
-| D3 | Pin GNU `arm-none-eabi-objdump` in `docs/TOOLCHAIN.md` (version, hash, provenance) as a second decoder; its output is target data | toolchain | E3 | S–M | Do first (was: only if D2 declined) | Do, independently of D2 |  |
-| D4 | `07_verification.md`: every stated range, unit or count gets a recompute line with inputs, rate, precision, clamping and rounding | method | E2 | S | Do | Do, with semantic checks |  |
-| D5 | `01_workflow.md`: a function's role comes from its body, its disassembly or a verified contract. Otherwise that role is marked *inferred* on its own, with what would decide it | method | E4 | S | Do | Do |  |
-| D6 | `07_verification.md`: before recording a data-flow interpretation, trace the known readers, writers, flags and resets; list the unresolved ones | method | E5 | S | Do, bounded | Do, as bounded tracing |  |
-| D7 | `02_audio_path.md`: do not name a board from control counts. A string, pin map or peripheral setup is evidence only when corroborated | method | E6 | S | Do | Do |  |
-| D8 | `01_workflow.md`: plan coverage by the owner's question and by sound contribution. Unreachable modes get one line each by default; keep a list of what was left out | method | E7 | S | Do | Do, task-scoped |  |
-| D9 | `02_audio_path.md`: follow the reset handler's `.data` copy (load-image source, destination, length; BSS separately) and read initial values from the load image | method | E8 | S | Do; helper later | Do method; defer helper |  |
-| D10 | `07_verification.md`: checklist for comparisons. Check every aside; apply the rule to inactive branches; define "reachable" (host path and trigger); keep library capability, reachable behaviour and measured sound apart | method | E9 | S | Do | Do |  |
-| D11 | `07_verification.md`: the step-6 protocol as standard for **formal** blind comparisons (uncontaminated analyst, freeze with hash, sealed reference, unanchored second assessor, append-only corrections) | method | keeps §2 | S | Do, for formal blind tests | Do for formal blind tests; optional elsewhere |  |
-| D12 | `l2a query` for base-plus-offset accesses, as candidates within one function first | l2a | E5 | M–L | Defer until specified (was: do after D1/D2) | Defer until precisely scoped |  |
-| D13 | Create functions at code pointers found in literal pools during `l2a open` | l2a | — | M | Defer | Defer |  |
-| D14 | Constant provenance query: which instruction stores this value | l2a | E5 | M–L | Defer | Defer |  |
-| D15 | An `l2a` emulator command for single DSP functions | l2a | Q10-type questions | L | Defer | Defer |  |
-| D16 | Derive every summary count from the final grade and coverage list; label subgroups; keep the original counts as history | method | E12 | S | Do | Do (new) |  |
-| D17 | Recomputations state a pass criterion: matching label and expression, units and rate, tolerance or bits, rounding | method | E11 | S | Do | Do (new) |  |
-| D18 | Offline models record script hash, inputs, precision, the measured property and what they leave out; never called a target measurement | method | E10 | S | Do | Do (new) |  |
-| D19 | Record seen behaviour and unresolved consumers in `case.md` at once, even before it is explained | method | E13 | S | Do | Do (new) |  |
-| D20 | Hand-over intake for every archive: check member paths and types before extraction, verify the manifest without running scripts, keep the original archive and manifest apart from later edits | method | E14 | S | Do | Do (new) |  |
-| D21 | Apply the step-5 skills corrections S1–S12 from the review, §4 | method | step 5 | M | Do, together with D4–D11 | Proposed in review §4 |  |
+| D1 | Document `xrefs <literal address>` for all users of a literal. Then `disasm` annotates the data references Ghidra resolves (address, word, optional float reading), and `consts --uses` lists all users | method, l2a | E1 | S (note), M (code) | Do | Do, narrower: note first, annotation as convenience | Approved: do |
+| D2 | `disasm` decodes the FPv5 `cdp2` encodings as an annotation. This does not repair the decompiler | l2a | E3 | M–L | Defer (was: do) | Defer until D3 leaves a costly gap | Approved: defer |
+| D3 | Pin GNU `arm-none-eabi-objdump` in `docs/TOOLCHAIN.md` (version, hash, provenance) as a second decoder; its output is target data | toolchain | E3 | S–M | Do first (was: only if D2 declined) | Do, independently of D2 | Approved: do |
+| D4 | `07_verification.md`: every stated range, unit or count gets a recompute line with inputs, rate, precision, clamping and rounding | method | E2 | S | Do | Do, with semantic checks | Approved: do |
+| D5 | `01_workflow.md`: a function's role comes from its body, its disassembly or a verified contract. Otherwise that role is marked *inferred* on its own, with what would decide it | method | E4 | S | Do | Do | Approved: do |
+| D6 | `07_verification.md`: before recording a data-flow interpretation, trace the known readers, writers, flags and resets; list the unresolved ones | method | E5 | S | Do, bounded | Do, as bounded tracing | Approved: do |
+| D7 | `02_audio_path.md`: do not name a board from control counts. A string, pin map or peripheral setup is evidence only when corroborated | method | E6 | S | Do | Do | Approved: do |
+| D8 | `01_workflow.md`: plan coverage by the owner's question and by sound contribution. Unreachable modes get one line each by default; keep a list of what was left out | method | E7 | S | Do | Do, task-scoped | Approved: do |
+| D9 | `02_audio_path.md`: follow the reset handler's `.data` copy (load-image source, destination, length; BSS separately) and read initial values from the load image | method | E8 | S | Do; helper later | Do method; defer helper | Approved: do |
+| D10 | `07_verification.md`: checklist for comparisons. Check every aside; apply the rule to inactive branches; define "reachable" (host path and trigger); keep library capability, reachable behaviour and measured sound apart | method | E9 | S | Do | Do | Approved: do |
+| D11 | `07_verification.md`: the step-6 protocol as standard for **formal** blind comparisons (uncontaminated analyst, freeze with hash, sealed reference, unanchored second assessor, append-only corrections) | method | keeps §2 | S | Do, for formal blind tests | Do for formal blind tests; optional elsewhere | Approved: do |
+| D12 | `l2a query` for base-plus-offset accesses, as candidates within one function first | l2a | E5 | M–L | Defer until specified (was: do after D1/D2) | Defer until precisely scoped | Approved: defer |
+| D13 | Create functions at code pointers found in literal pools during `l2a open` | l2a | — | M | Defer | Defer | Approved: defer |
+| D14 | Constant provenance query: which instruction stores this value | l2a | E5 | M–L | Defer | Defer | Approved: defer |
+| D15 | An `l2a` emulator command for single DSP functions | l2a | Q10-type questions | L | Defer | Defer | Approved: defer |
+| D16 | Derive every summary count from the final grade and coverage list; label subgroups; keep the original counts as history | method | E12 | S | Do | Do (new) | Approved: do |
+| D17 | Recomputations state a pass criterion: matching label and expression, units and rate, tolerance or bits, rounding | method | E11 | S | Do | Do (new) | Approved: do |
+| D18 | Offline models record script hash, inputs, precision, the measured property and what they leave out; never called a target measurement | method | E10 | S | Do | Do (new) | Approved: do |
+| D19 | Record seen behaviour and unresolved consumers in `case.md` at once, even before it is explained | method | E13 | S | Do | Do (new) | Approved: do |
+| D20 | Hand-over intake for every archive: check member paths and types before extraction, verify the manifest without running scripts, keep the original archive and manifest apart from later edits | method | E14 | S | Do | Do (new) | Approved: do |
+| D21 | Apply the step-5 skills corrections S1–S12 from the review, §4 | method | step 5 | M | Do, together with D4–D11 | Proposed in review §4 | Approved: do |
 
-Count: Claude 16 do, 5 defer. Codex 16 do or proposed, 5 defer. **The two columns now agree on every item.**
+Count: Claude 16 do, 5 defer. Codex 16 do or proposed, 5 defer. The two columns agree on every item, and the owner
+approved all of them.
 Codex's narrower scopes for D1, D6, D8, D9 and D11 are taken into the proposal text.
 
 ## 5. What to drop or shrink
@@ -101,7 +103,7 @@ Codex's narrower scopes for D1, D6, D8, D9 and D11 are taken into the proposal t
 ## 6. Open points and not covered
 
 * The step-5 skills review is now done (review §4: all eight files, 12 points, all 44 constant entries correct).
-  Roadmap step 5 can be marked reviewed once the owner accepts D21.
+  The owner accepted D21 on 2026-11-04, so roadmap step 5 counts as reviewed; the corrections follow with D21.
 * [O] Step 8 order (VST3, AMYboard, logue SDK, Ventris/Nemesis) is the owner's call. A VST3 target would test the `pe`
   profile, which no case has used yet [F].
 * Not counted: time spent per finding, number of queries, or which skill files the sessions actually opened.

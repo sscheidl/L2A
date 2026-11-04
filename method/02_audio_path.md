@@ -65,7 +65,57 @@ Raw images have no symbols, so the decompiler shows `FUN_…` and `DAT_…` name
   function: its function-pointer argument is the task body. Then find the I2S write call inside a loop. The Xtensa
   module quality in Ghidra is still [O].
 
+## Linux boards with an audio engine (Raspberry Pi and similar)
+
+Some modules run a full Linux system. A general-purpose audio engine (Csound, Pure Data, SuperCollider, or a
+JACK/ALSA program) does the DSP, while a script language polls the controls. The "firmware" is then often an update
+package of scripts, engine code and a few shared objects, not an image. Ghidra is only needed for the native parts.
+
+1. **Unpack safely.** Check the real format with `file`; the extension can lie.
+
+   [F: observed 2026-11-03 in a third-party update package] A file named `.zip` was a gzip-compressed tar, and the
+   device's update script unpacked it with `tar`.
+
+   List the archive before extracting it. Refuse links, absolute paths and `..` entries, extract into a new empty
+   folder in the case, and write a hash manifest.
+2. **Boot chain.** Follow the start from the init system to the engine:
+   * systemd units (`ExecStart`, `User=`, `WorkingDirectory=`), `rc.local`, cron `@reboot`;
+   * then the start-up scripts, the update step, and the main program.
+
+   Note every script that the package calls but does not contain. It lives in the base image and is an open question [O].
+3. **Platform evidence without a binary.** Boot configuration (`config.txt` device-tree overlays such as `i2s`, `spi`,
+   codec overlays, clock settings), mixer-control names in `amixer` calls, fstab, CPU-governor writes for the core
+   count, and `readelf -A` attributes of the shipped shared objects (CPU architecture, float ABI, compiler string in
+   `.comment`). Shared objects built for the wrong architecture are a finding in themselves: they cannot run on the
+   device.
+4. **Engine start = audio-path entry.** Find where the main program starts the engine and with which options:
+   * device (`hw:0,0`), sample rate, block and buffer sizes, real-time flags;
+   * for Csound: `sr`, `ksmps`, `-b`/`-B`, `-+rtaudio`;
+   * for Pd: `-audiobuf`, `-callback`.
+
+   Code that is generated at run time, such as an orchestra assembled from strings, has to be reconstructed from the
+   generator. Record which parts are fixed and which come from files.
+5. **DSP code.** The DSP sits in the engine language (instrument or patch files), not in native code. Read it like
+   decompiler output:
+   * find the block-rate main instrument or patch;
+   * list its opcodes or objects, map them to building blocks ([3](03_building_blocks.md)) and recompute its constants
+     ([4](04_constants.md)).
+
+   The opcode semantics come from the engine's documentation and source *for the version on the device*. Until that
+   version is known, label them [A].
+6. **Control bridge.** The script side reads the ADCs (SPI), shift registers and encoders (GPIO), then writes into
+   named engine channels. Examples: Csound `chnexport`/`chnset`, which the API reaches through channel pointers; Pd
+   `netreceive`/`send`, or OSC. Map each hardware input to its channel name, then follow the name into the DSP code
+   ([6](06_parameter_paths.md)). Smoothing, hysteresis and calibration usually live on the script side.
+7. **Engine semantics are part of the evidence.** Init-time vs performance-time execution, table allocation and memory
+   footprint depend on the engine version. Write such points as open questions with "what would decide it" (the
+   engine source of that version, or a measurement), instead of assuming one behaviour.
+
+The program loop is not a real-time callback: its poll rate, and so the control latency, is NOT MEASURED until
+someone measures it on the device.
+
 ## Record
 
 In `case.md`, record the callback address, block size, channel count, sample format, sample rate (with evidence) and
-the call chain from the interrupt or entry point to the DSP.
+the call chain from the interrupt or entry point to the DSP. For Linux boards, also record the boot chain, the engine
+version (or [O]), the engine options and the channel names that connect controls to DSP.

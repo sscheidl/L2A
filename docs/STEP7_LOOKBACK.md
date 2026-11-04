@@ -114,7 +114,7 @@ Codex's narrower scopes for D1, D6, D8, D9 and D11 are taken into the proposal t
 | Items | Where | Status |
 | --- | --- | --- |
 | D4–D11, D16–D20, D21 (S1–S12) | `method/01`–`07`, `method/README.md` | Done |
-| D3 | `docs/TOOLCHAIN.md`, *GNU objdump* | Done. Provenance against the official xPack archive is NOT VERIFIED [O]: that needs a download with the owner's consent |
+| D3 | `docs/TOOLCHAIN.md`, *GNU objdump* | Done. Provenance VERIFIED 2026-11-04 against the official xPack archive: 5,386 of 5,386 files identical |
 | D1 | `src/l2a/queries.py`, `src/l2a/values.py`, `docs/L2A_CLI.md`, tests | Done. MEASURED 2026-11-04 on the step-6 case: `disasm 0x2400ece6` now shows `; [2400ed10] word 0x42340000 float 45`, and `consts --uses` lists both users of that literal |
 | D2, D12–D15 | — | Deferred, as decided |
 

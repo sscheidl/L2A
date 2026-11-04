@@ -84,10 +84,10 @@ change or save the project. If the target file has changed since the import, a w
 | `info` | Format, language, memory blocks, import record |
 | `functions [--sort addr\|size\|fp\|name] [--name TEXT] [--min-size N] [--no-fp]` | Entry, size in bytes, count of instructions with floating-point p-code (`fpops`), name |
 | `decompile <func>` | Pseudocode |
-| `disasm <target> [--count N]` | The whole function body, or N code units from an address |
-| `xrefs <target> [--from]` | References to an address or function, or from a function's body |
+| `disasm <target> [--count N]` | The whole function body, or N code units from an address. An instruction with a data reference that Ghidra resolved (a PC-relative literal, an address constant) ends with `; [addr] word 0x… float …`, at most two per line. The word is the 32-bit word at that address, whatever the access width; the float reading is a hint |
+| `xrefs <target> [--from]` | References to an address or function, or from a function's body. `xrefs <literal address>` lists every instruction that loads a literal |
 | `calls <func>` | Callers and callees |
-| `consts <func> [--all]` | Data constants the function reads (value, float32 reading, label), then scalars. Small scalars (abs ≤ 16) are hidden unless `--all` is given |
+| `consts <func> [--all] [--uses]` | Data constants the function references (value, float32 reading, label), then scalars. Each line names the first user and a count; `--uses` lists every user. Small scalars (abs ≤ 16) are hidden unless `--all` is given. Only references and scalar operands that Ghidra found are listed |
 | `table <addr> [--type T] [--count N] [--stride B]` | Typed read: `float32`, `float64`, `int8`–`uint32`, `q15`, `q31` |
 | `search --float V [--tol T] \| --double V \| --int32 V \| --int16 V \| --bytes HEX \| --string S [--limit N] [--unaligned]` | Hits in loaded memory, with the referencing functions |
 

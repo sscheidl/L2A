@@ -100,6 +100,15 @@ class GhidraIntegrationTest(unittest.TestCase):
         self.assertIn("in Reset_Handler", out)
         self.assertIn("constants of 240009d4", out)
 
+    def test_literal_references(self):
+        out = self.q("disasm", "reset_handler", "--max-lines", "0", "--then", "consts", "reset_handler", "--uses",
+                     "--max-lines", "0")
+        # pc-relative literal loads carry the resolved address and its word
+        self.assertRegex(out, r"(?m)^\| +2400[0-9a-f]{4} .*ldr.*  ; \[[0-9a-f]{8}\] (word 0x[0-9a-f]{8}|bytes )")
+        consts = out.split("constants of", 1)[1]
+        self.assertRegex(consts, r"(?m)^\| data +[0-9a-f]{8}  word 0x[0-9a-f]{8}.*  @[0-9a-f]{8}")
+        self.assertNotIn(" (x", consts)  # --uses lists every user instead of a count
+
     def test_out_file_and_guard(self):
         out = self.q("decompile", "reset_handler", "--out", "reset.c")
         self.assertIn("wrote", out)

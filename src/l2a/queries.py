@@ -15,6 +15,7 @@ from .output import quote
 from .profiles import parse_addr
 
 HEX = re.compile(r"^(0x)?[0-9a-fA-F]+$")
+MAX_REF_NOTES = 2  # data-reference notes per disassembly line
 
 
 # --- helpers -------------------------------------------------------------------------------------------------
@@ -64,6 +65,26 @@ def _where(program, addr) -> str:
         return f"in {fn.getName()}"
     sym = program.getSymbolTable().getPrimarySymbol(addr)
     return f"at {sym.getName()}" if sym is not None else ""
+
+
+def _data_refs(insn):
+    """Memory addresses that an instruction references as data (literal loads, address constants)."""
+    out = []
+    for ref in insn.getReferencesFrom():
+        to = ref.getToAddress()
+        if ref.getReferenceType().isData() and to.isMemoryAddress():
+            out.append(to)
+    return out
+
+
+def _describe_ref(program, to) -> tuple[str, str]:
+    """("data", contents) for an initialized address; ("ram", why) for an unmapped or uninitialized one."""
+    block = program.getMemory().getBlock(to)
+    if block is None or not block.isInitialized():
+        return "ram", "unmapped" if block is None else f"uninitialized ({block.getName()})"
+    sym = program.getSymbolTable().getPrimarySymbol(to)
+    return "data", values.describe_data(read_bytes(program, to, 4), program.getLanguage().isBigEndian(),
+                                        sym.getName() if sym is not None else "")
 
 
 def _float_opcodes() -> frozenset[int]:
@@ -142,7 +163,14 @@ def _unit_line(program, cu) -> list[str]:
     if sym is not None and not sym.isDynamic():
         out.append(f"{sym.getName()}:")
     raw = " ".join(f"{b & 0xFF:02x}" for b in cu.getBytes())
-    out.append(f"  {cu.getMinAddress()}  {raw:<17} {cu}")
+    line = f"  {cu.getMinAddress()}  {raw:<17} {cu}"
+    from ghidra.program.model.listing import Instruction
+
+    if isinstance(cu, Instruction):  # data units are left as they are
+        notes = [f"[{to}] {_describe_ref(program, to)[1]}" for to in _data_refs(cu)[:MAX_REF_NOTES]]
+        if notes:
+            line += "  ; " + "; ".join(notes)
+    out.append(line)
     return out
 
 
@@ -193,26 +221,13 @@ def q_consts(program, args, ctx):
     from ghidra.program.model.scalar import Scalar
 
     fn = resolve_function(program, args.target)
-    mem = program.getMemory()
     found: dict[tuple, list] = {}
     for insn in program.getListing().getInstructions(fn.getBody(), True):
         ref_targets = set()
-        for ref in insn.getReferencesFrom():
-            to = ref.getToAddress()
-            if not ref.getReferenceType().isData() or not to.isMemoryAddress():
-                continue
+        for to in _data_refs(insn):
             ref_targets.add(to.getOffset())
-            block = mem.getBlock(to)
-            if block is None or not block.isInitialized():
-                where = "unmapped" if block is None else f"uninitialized ({block.getName()})"
-                found.setdefault(("ram", str(to), where), []).append(insn.getAddress())
-                continue
-            raw = read_bytes(program, to, 4)
-            w = values.read_word(raw, program.getLanguage().isBigEndian()) if len(raw) == 4 else 0
-            hint = values.float_bits_hint(w)
-            sym = program.getSymbolTable().getPrimarySymbol(to)
-            desc = f"word {w:#010x}" + (f" float {hint}" if hint else "") + (f"  [{sym.getName()}]" if sym else "")
-            found.setdefault(("data", str(to), desc), []).append(insn.getAddress())
+            kind, desc = _describe_ref(program, to)
+            found.setdefault((kind, str(to), desc), []).append(insn.getAddress())
         for i in range(insn.getNumOperands()):
             for obj in insn.getOpObjects(i):
                 if not isinstance(obj, Scalar):
@@ -226,8 +241,11 @@ def q_consts(program, args, ctx):
     order = {"data": 0, "scalar": 1, "ram": 2}  # values first; addresses without contents last
     lines = []
     for (kind, key, desc), where in sorted(found.items(), key=lambda kv: (order[kv[0][0]], kv[0][1])):
-        more = f" (x{len(where)})" if len(where) > 1 else ""
-        lines.append(f"{kind:<6} {key:>12}  {desc}  @{where[0]}{more}")
+        if args.uses:
+            at = "@" + ",".join(str(a) for a in where)
+        else:
+            at = f"@{where[0]}" + (f" (x{len(where)})" if len(where) > 1 else "")
+        lines.append(f"{kind:<6} {key:>12}  {desc}  {at}")
     return f"constants of {fn.getEntryPoint()}: {len(lines)} (scalars |v|<=16 hidden unless --all)", lines
 
 
@@ -312,6 +330,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("consts", parents=[common], help="scalars and referenced data constants of a function")
     s.add_argument("target")
     s.add_argument("--all", action="store_true", help="include small scalars (|v| <= 16)")
+    s.add_argument("--uses", action="store_true", help="list every using instruction, not only the first")
     s = sub.add_parser("table", parents=[common], help="typed table read")
     s.add_argument("target")
     s.add_argument("--type", default="float32", choices=sorted(values.TYPES))

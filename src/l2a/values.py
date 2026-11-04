@@ -60,6 +60,21 @@ def float_bits_hint(word: int) -> str:
     return ""
 
 
+def describe_data(raw: bytes, big_endian: bool = False, label: str = "") -> str:
+    """Contents of a referenced data address: the 32-bit word there and its float32 reading, if plausible.
+
+    The word is read regardless of the access width; the float reading is a hint, not a type.
+    Fewer than 4 readable bytes are shown as bytes.
+    """
+    if len(raw) >= 4:
+        w = read_word(raw, big_endian)
+        hint = float_bits_hint(w)
+        text = f"word {w:#010x}" + (f" float {hint}" if hint else "")
+    else:
+        text = "bytes " + (raw.hex(" ") if raw else "(none readable)")
+    return text + (f"  [{label}]" if label else "")
+
+
 def pattern(kind: str, text: str, big_endian: bool = False) -> bytes:
     """Byte pattern for an exact search."""
     order = ">" if big_endian else "<"

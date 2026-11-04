@@ -197,6 +197,14 @@ class ValuesTest(unittest.TestCase):
         self.assertEqual(values.float_bits_hint(0x24000749), "")  # an address, not a plausible float
         self.assertEqual(values.float_bits_hint(0), "")
 
+    def test_describe_data(self):
+        self.assertEqual(values.describe_data(struct.pack("<I", 0x42340000), label="DAT_2400ed10"),
+                         "word 0x42340000 float 45  [DAT_2400ed10]")
+        self.assertEqual(values.describe_data(struct.pack("<I", 0x24000749)), "word 0x24000749")  # no float hint
+        self.assertEqual(values.describe_data(struct.pack(">I", 0x43c80000), big_endian=True), "word 0x43c80000 float 400")
+        self.assertEqual(values.describe_data(b"\x01\x02"), "bytes 01 02")  # end of a block
+        self.assertEqual(values.describe_data(b""), "bytes (none readable)")
+
 
 class PlaceTargetTest(unittest.TestCase):
     def test_rebuilt_target_replaces_copy_and_keeps_backup(self):
@@ -251,6 +259,8 @@ class QueryArgvTest(unittest.TestCase):
         self.assertEqual((a.cmd, a.type, a.count, a.out), ("table", "q15", 4, "t.txt"))
         a = p.parse_args(["xrefs", "main", "--from"])
         self.assertTrue(a.from_)
+        self.assertTrue(p.parse_args(["consts", "main", "--uses"]).uses)
+        self.assertFalse(p.parse_args(["consts", "main"]).uses)
 
 
 if __name__ == "__main__":

@@ -68,10 +68,18 @@ Pinned on 2026-11-04 for roadmap step 7, decision D3: a second decoder for instr
 | How it was installed | By the Daisy-Seed script `diagnostics/scripts/install-toolchain-windows.sh` on 2026-11-01. The script downloads the ZIP from the [xPack GitHub release v13.2.1-1.1](https://github.com/xpack-dev-tools/arm-none-eabi-gcc-xpack/releases/tag/v13.2.1-1.1), checks its SHA-256 `56b18ccb0a50f536332ec5de57799342ff0cd005ca2c54288c74759b51929e4f` before unpacking, and then leaves the marker `arm-gcc.zip.done` |
 | Typical call | Raw image: `arm-none-eabi-objdump -D -b binary -m arm -M force-thumb --adjust-vma=<base> --start-address=<a> --stop-address=<b> <file.bin>`. ELF: `arm-none-eabi-objdump -d -M force-thumb --start-address=<a> --stop-address=<b> <file.elf>` (an ELF shows symbols: only where the case allows them). Both MEASURED 2026-11-04 on the step-6 target: `0x2400ecee` decodes as `vseleq.f32`, where Ghidra shows `cdp2` |
 
-**Provenance: NOT VERIFIED against the official archive by L2A.** The install script's checksum check is indirect
-evidence only: L2A did not see that run, and the archive was deleted afterwards. To verify, download the official ZIP
-(with the owner's consent), compare its SHA-256 with the value on the release page, and compare every file with the
-manifest above, as for Ghidra.
+**Provenance check against the official archive: VERIFIED on 2026-11-04**, with the owner's consent for the download.
+Steps:
+
+1. The official ZIP `xpack-arm-none-eabi-gcc-13.2.1-1.1-win32-x64.zip` (306,340,878 bytes, release published
+   2023-11-09) and its `.sha` file were downloaded from the GitHub release (`gh release download`) into an empty
+   scratch folder. The ZIP's SHA-256 `56b18ccb…29e4f` matched the published `.sha` file exactly, and also the value in
+   the Daisy-Seed install script.
+2. Every member of the ZIP was hashed in memory, without extracting it, and compared with the local manifest above.
+   Result: **5,386 of 5,386 files identical**; 0 changed, 0 missing, 0 extra. No links, absolute paths or `..` entries.
+3. The ZIP, the `.sha` file and the comparison script were deleted afterwards.
+
+The local install is byte-identical to the official xPack 13.2.1-1.1 release for Windows x64.
 
 The install lives in another project's folder. If Daisy-Seed removes or updates `.tools`, this record no longer
 applies: re-pin in a small PR.

@@ -2,14 +2,22 @@
 
 Numbers are the cheapest evidence. Typical paths:
 
-* `l2a query <case> consts <f>` shows every data word a function reads, with its float32 reading.
+* `l2a query <case> consts <f>` shows the data words that a function's instructions reference, with a float32
+  reading, then its scalar operands. Each line names the first user and a count; `--uses` lists every user.
 * `l2a query <case> search --float 48000` finds a value and the functions that use it.
 * `l2a query <case> table <addr> --type float32 --count 32` reads tables.
+
+`consts` is not a complete list of what a function reads. It relies on the references and scalar operands that Ghidra
+found. Indirect loads, computed addresses, values built in registers and instructions Ghidra does not decode are
+missing ([7](07_verification.md), *Second decoder*).
 
 ## How compilers store constants [A]
 
 * **Literal pool** (ARM): `vldr s0, [pc, #…]` reads a float word next to the function. It shows up in `consts` as
-  `data … word 0x… float …`.
+  `data … word 0x… float …`, and `disasm` appends the resolved word to the instruction (`; [2400ed10] word … float …`).
+  **Do not compute the literal address by hand** (`Align(PC + 4, 4) + imm`). Use that annotation, and list every
+  user of a literal with `xrefs <literal address>` or `consts <f> --uses` [F: step-6 case, a literal read by hand was
+  one word off].
 * **`movw`/`movt` pairs:** two halves of the float's bit pattern are built in a register and moved with `vmov`.
   `consts` then shows two scalars, for example `0x8000` and `0x473b`, which together are 48000.0. A memory `search`
   will **not** find these, so check `consts` too.

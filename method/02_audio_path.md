@@ -6,8 +6,8 @@ Everything else (UI, MIDI, storage) hangs off it.
 ## Cortex-M firmware (Daisy, other STM32)
 
 1. **Vector table.** With `--profile cortex-m`, `l2a open` has already created `reset_handler`, the system handlers and
-   `irqN_handler` functions. Handlers shared by many vectors are named `irq_shared_<addr>`; they are usually the
-   default "do nothing" handler.
+   `irqN_handler` functions. A handler shared by many vectors is usually the default "do nothing" handler. It is named
+   `irq_shared_<addr>`, unless a system vector also points to it: then it is named after that system vector.
 2. **Interrupts that move audio.** Audio arrives from a serial audio interface (SAI or I2S) through DMA. The DMA
    interrupt fires at half and full buffer (double buffering). Candidates:
    * IRQ handlers that are not shared;
@@ -20,8 +20,9 @@ Everything else (UI, MIDI, storage) hangs off it.
    strongest candidate.
 
    [F: MEASURED 2026-11-03 on our own Daisy build `PhysicalModeling-v0.1.0.bin`] IRQ 11 and IRQ 12 are 6-byte
-   trampolines (`ldr r0,[pc…]; b.w …`). Each loads a handle pointer from RAM and branches to one shared DMA interrupt
-   routine. That routine compares the handle's stream address with `0x40020010` and `0x40020028`, which are DMA1
+   trampolines (`ldr r0,[pc…]; b.w …`). Each loads the **address** of a handle in RAM from a literal in the image, and
+   branches to one shared DMA interrupt routine. Keep apart where a pointer is stored, what it points to, and where the
+   callback is stored. That routine compares the handle's stream address with `0x40020010` and `0x40020028`, which are DMA1
    streams 0 and 1. So with HAL-style code, follow the shared routine and the handle structures, not the tiny vector
    targets.
 4. **Callback indirection.** HAL-style drivers store the user callback as a function pointer in RAM and call it with
@@ -32,8 +33,18 @@ Everything else (UI, MIDI, storage) hangs off it.
    * interleaved buffer access (`[i*2]`, `[i*2+1]`);
    * conversions from integers to float or back: `vcvt` with `1/8388608` (24-bit) or `1/2147483648` (32-bit), and
      saturation ([4](04_constants.md)).
-6. **Main loop vs callback.** The main loop polls controls (ADC, encoder, MIDI UART) and writes parameters into RAM. The
-   callback reads them ([6](06_parameter_paths.md)). Separate the two early.
+6. **Main loop vs callback** [A]. Often the main loop polls controls (ADC, encoder, MIDI) and writes parameters into
+   RAM, and the callback reads them ([6](06_parameter_paths.md)). This is a typical arrangement, not a rule: controls
+   may also be read inside the audio callback while MIDI runs elsewhere [F: step-6 case, the knobs are smoothed in the
+   callback]. Trace the actual execution context of each read and write, and how values are handed over.
+7. **Initial values in RAM.** `.data` variables (tables, gains, callback pointers) get their start values from the load
+   image. The reset handler copies them: find the copy loop and note the source in the image (the load address, which
+   may be flash or RAM), the RAM destination and the length. BSS is zeroed separately. Then read the start values from
+   the load image with `table`. Keep start values apart from values written at run time.
+   [F: step-6 case] Per-model gains in RAM were left open blind, although their start values were in the `.bin`.
+8. **Board identity.** Do not name a board from the number or layout of knobs, keys or switches. Record "board unknown"
+   until a pin map, a peripheral setup or a corroborated string identifies it [F: the same wrong board guess in two
+   cases].
 
 Raw images have no symbols, so the decompiler shows `FUN_…` and `DAT_…` names. Name them in `case.md` as you go.
 
@@ -77,7 +88,8 @@ package of scripts, engine code and a few shared objects, not an image. Ghidra i
    device's update script unpacked it with `tar`.
 
    List the archive before extracting it. Refuse links, absolute paths and `..` entries, extract into a new empty
-   folder in the case, and write a hash manifest.
+   folder in the case, and write a hash manifest. The same intake rules apply to returned case archives
+   ([1](01_workflow.md), *Work done in a cloud session*).
 2. **Boot chain.** Follow the start from the init system to the engine:
    * systemd units (`ExecStart`, `User=`, `WorkingDirectory=`), `rc.local`, cron `@reboot`;
    * then the start-up scripts, the update step, and the main program.

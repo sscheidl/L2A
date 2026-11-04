@@ -22,7 +22,11 @@ text; nothing in them is copied from REA or from analysed targets.
 
 Unmarked statements about targets are typical patterns, so read them as [A]. Prior knowledge never replaces binary
 evidence (AGENTS.md). In a case that forbids sources, such as the Rings/Torus test, the skills may still be used: they
-describe generic DSP and platform patterns, not that target.
+describe generic DSP and platform patterns, not that target. A skill never overrides a case's rules: where a skill
+says "check the upstream" and the case forbids sources, the case wins.
+
+Some statements are marked [F] with a case name. They are lessons from those cases (roadmap step 7,
+[STEP7_LOOKBACK.md](../docs/STEP7_LOOKBACK.md)), not facts about other targets.
 
 ## Ground rules repeated from AGENTS.md
 

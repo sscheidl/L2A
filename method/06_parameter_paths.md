@@ -9,9 +9,16 @@ Trace it backwards from the DSP: it is easier than tracing forwards from the kno
 ## Backwards from the DSP
 
 1. In the audio callback, find a coefficient or gain that is read from RAM rather than from a constant.
-2. Find who writes it: `l2a query <case> xrefs <ram address>`. Usually there is one writer in the control path, and
-   sometimes a smoother inside the callback.
+2. Find who writes it: `l2a query <case> xrefs <ram address>`. Often there is one writer in the control path, and
+   sometimes a smoother inside the callback. But expect more: a knob and a MIDI CC may write the same value, a preset
+   load or a reset may overwrite it, and per-voice copies may exist.
 3. In the writer, follow the value back through the mapping ([4](04_constants.md)) to its source.
+4. Before recording the interpretation, follow the value once to its other readers too: who uses it, and what changes
+   when it changes ([7](07_verification.md), *Trace data flow*).
+
+`xrefs` lists the references Ghidra found to an address. Accesses through a base pointer plus an offset
+(`[r4, #0x28]`), aliases and indirect calls do not appear there. An empty `xrefs` list does not prove that nothing
+writes the value. Record the writers you know, which one wins, and the ones you could not resolve.
 
 ## Sources
 

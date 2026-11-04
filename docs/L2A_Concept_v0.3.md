@@ -205,12 +205,6 @@ These are the project's own text (nothing copied from REA): guidance, not mandat
      and is written into its `case.md`. Every finding cites binary evidence.
    * Afterwards, compare with the source: correct, partly correct, wrong, or missed. The Cloud Reverb is the most interesting part,
      because there is no public reference for it.
-3. **Optional: Source Audio Ventris/Nemesis.**
-   * Firmware comes through the Neuro Desktop app
-     [F: [bonedo.de](https://www.bonedo.de/artikel/neue-firmware-fuer-das-source-audio-ventris-dual-reverb-pedal),
-     [Source Audio](https://www.sourceaudio.net/blog-navigating-the-neuro-desktop-with-the-ventris-dual-reverb.html)].
-   * The CPU and the format are unknown [O].
-   * Order: legal note, then a feasibility check, then analysis.
 
 ## 8. Not part of L2A
 

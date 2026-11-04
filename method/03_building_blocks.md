@@ -18,6 +18,9 @@ How common blocks look after compilation. Classify a function by its **state** (
   Coefficient recalculation (`sin`, `cos`, `tan`, `exp`) often happens outside the sample loop or only when a
   parameter changes.
 * A filter cascade appears as the same code repeated, or a loop over stages with a stride of 5 coefficients (biquads).
+* The table shows common formulations, not every variant. The `tan` form is one SVF among several two-state designs,
+  and the Butterworth Q depends on the filter order and the section (0.7071 is the second-order value). Before naming
+  an implementation, state the variant and check its coefficients, state count and signs ([7](07_verification.md)).
 
 ## Delays and interpolation
 
@@ -49,7 +52,8 @@ How common blocks look after compilation. Classify a function by its **state** (
 ## Saturation and fast math
 
 * Saturators: `tanh` (a libm call or a rational approximation such as `x·(27 + x²)/(27 + 9x²)`), soft clip
-  `x − x³/3` clamped to ±1, hard clip via `vmin`/`vmax` or `vcmp` with branches.
+  `x − x³/3` with its **input** limited to its monotone range (|x| ≤ 1, giving ±2/3, often rescaled by 1.5; clamping
+  only the output does not stop the curve from turning back for larger inputs), hard clip via `vmin`/`vmax` or `vcmp` with branches.
 * Fast exp2/pow approximations: bit tricks that build a float exponent: shift by 23, add `127`, and the constant
   `0x3f800000`, which is 1.0. A fast inverse square root uses the magic constant `0x5f3759df` or a variant.
 * Library calls: `expf`, `powf`, `sinf`, `tanf`, `tanhf`, `log10f`. In stripped firmware these are often

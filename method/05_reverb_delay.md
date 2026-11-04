@@ -6,7 +6,9 @@ Reverbs are networks of delays, filters and gains. To describe one, you need its
 ## First, find the delay memory
 
 * Large buffers live in external RAM on embedded targets (Daisy SDRAM `0xC000_0000`, ELF `.sdram_bss`) or on the heap
-  (plugins). `l2a query <case> info` shows the memory blocks.
+  (plugins). `l2a query <case> info` shows the memory blocks that Ghidra has mapped. That is not a map of the run-time
+  memory: a raw import often maps only the image, so external RAM, heap and buffers stay unmapped. Infer buffer
+  addresses and sizes from the code (base addresses, masks, clears at start-up) and mark run-time state as not read.
 * Each delay line is a buffer plus a write index. Collect them per function:
   * base address
   * size: from the wrap mask `& (N−1)` or the wrap compare

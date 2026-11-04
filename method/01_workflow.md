@@ -4,7 +4,7 @@
 
 1. Read `<case>\case.md`, especially *Status → Next step* and *Rules for this case*. If the folder is new, the
    template is [templates/case.md](../templates/case.md); `l2a open` creates `case.md` from it.
-2. **Check for a public upstream first.** Many vendors publish their firmware or plugin code (GitHub, release notes,
+2. **Check for a public upstream first**, unless the case's rules forbid sources (a blind test, for example). Many vendors publish their firmware or plugin code (GitHub, release notes,
    SDKs). Search for it before analysing, and compare the version string. If an upstream with a licence exists, record its
    URL, licence and version in `case.md`; that usually settles the legal question in minutes. Otherwise the owner records
    the provenance, licence and legal basis of a third-party target before any import.
@@ -16,8 +16,11 @@
    l2a open <case> <file> --profile pe                           # VST3 / Windows DLL
    ```
 
-   A wrong profile or base address stops the import with an error. Do not work around that error: find the right
-   settings instead (`docs/L2A_CLI.md`).
+   `l2a open` checks that the requested loader, language and base were applied, plus some structural conditions such
+   as a plausible vector table, and stops with an error if they fail. Do not work around that error: find the right
+   settings instead (`docs/L2A_CLI.md`). Passing these checks does **not** prove that the base or architecture fits the
+   target. Check that yourself: the vectors point into mapped code, literal addresses land in mapped blocks, and the
+   path from reset makes sense.
 
 ## Survey (cheap, one Ghidra start)
 
@@ -37,6 +40,12 @@ l2a query <case> decompile <f> --max-lines 80 --then consts <f> --then calls <f>
 ```
 
 * Big functions go to a file in the case: `decompile <f> --out decomp_<addr>.c`. Then read it in parts.
+* **A function's role comes from its own code**: its body, its disassembly, or a verified signature or call contract.
+  A role guessed from a call site, a name or a string stays *inferred*. The finding says so for that role in its own
+  words, with what would decide it. A row that mixes observed facts with an inferred role labels each part.
+* **Record what you see at once.** Behaviour you notice but cannot explain yet (an infinite sustain, a flag that is
+  never read, a second writer) goes into `case.md` immediately, as a finding or an open question with its address.
+  Unrecorded observations drop out of coverage.
 * Name what you understand in `case.md` (*Examined functions*), not in your head. Renames in Ghidra are optional and are
   done in the GUI, never while `l2a` has the project open.
 
@@ -56,13 +65,21 @@ l2a query <case> decompile <f> --max-lines 80 --then consts <f> --then calls <f>
 * Known public designs may suggest a hypothesis. A match becomes a finding only through target evidence
   ([7](07_verification.md)).
 
+## Plan coverage
+
+* Start from the owner's question. For an instrument, the generator and exciter kernels and the real parameter routing
+  usually decide the sound; cover them before features this firmware cannot reach.
+* Code that is compiled in but not reachable from the host (an effect mode the firmware never selects, for example) gets
+  one line each by default: what it is and why it is unreachable. Go deeper only for a stated hypothesis or on request.
+* Keep a short list of what was left out, so that the next session or the reviewer can see the gap.
+
 ## Targets built on a library
 
 Many targets delegate the DSP to a library: Csound, Pd, JUCE, CMSIS-DSP, DaisySP or the logue SDK.
 
 * **Pin a reference version.** Record the repository, tag and commit of the library source you read, in *Target →
   Reference library*. Use the version the target ships with. If that version is unknown, use the last release before
-  the target's date, and keep "which version is on the device?" as an open question.
+  the target's date as an *assumed* reference, and keep "which version is on the device?" as an open question.
 * **Grade library behaviour against that version.** A behaviour that rests on library source is at best
   *derived for <version>*. It stays *inferred* for the device until the version is confirmed.
 * **Tag ownership** in signal-flow and parameter findings:
@@ -77,9 +94,19 @@ Many targets delegate the DSP to a library: Csound, Pd, JUCE, CMSIS-DSP, DaisySP
 * Upload originals to a cloud agent session only for our own or openly licensed targets. For proprietary targets, only
   derived material leaves the machine (AGENTS.md, *Data*).
 * Hand the result back as **one archive of the whole case folder**: `case.md`, `out/`, `target/`, scripts and manifests,
-  with `SHA256SUMS` over every file. Reference libraries are not copied; give their URL, tag and commit in a `REF.txt`.
-* Locally, unpack the archive into `D:\L2A-cases\<case>\` and run `sha256sum -c SHA256SUMS`. A missing file is a finding
-  about the hand-over: note it in the session log.
+  with `SHA256SUMS` over every file except `SHA256SUMS` itself. Reference libraries are not copied; give their URL, tag
+  and commit in a `REF.txt`.
+* **Intake of a returned archive**, and of any other hand-over archive:
+  * List the archive before extracting it. Accept only regular files and directories. Refuse links and every other
+    member type (devices, FIFOs), absolute paths, `..` entries and Windows drive or UNC paths, and check that every
+    member stays inside the destination.
+  * Extract into a new, empty folder, then move it to `D:\L2A-cases\<case>\`.
+  * Read `SHA256SUMS` as data first: every path in it must be relative, stay inside the case, and name a regular file
+    from the listing. Only then run `sha256sum -c SHA256SUMS`, without running any delivered script. Also compare the
+    other way: a delivered file that the manifest does not list is a finding too. So is a missing file. Note both in the
+    session log.
+  * Keep the original archive and its manifest unchanged next to the case. Later edits to `case.md` or scripts are a new
+    working state: say so in the session log instead of silently updating the old manifest.
 
 ## End of every work step
 

@@ -52,12 +52,48 @@ The valid vendor signature on the main binaries is sufficient provenance evidenc
 The wheels are part of the verified Ghidra tree, so their provenance follows from the Ghidra check above.
 The venv lies outside the repository and is not a pinned artefact itself; it can be recreated with the command above.
 
+## GNU objdump (second decoder)
+
+Pinned on 2026-11-04 for roadmap step 7, decision D3: a second decoder for instructions that Ghidra shows as `cdp2`
+(`method/07_verification.md`, *Second decoder*). L2A only reads with it; it never builds anything.
+
+| Field | Value |
+| --- | --- |
+| Package | xPack GNU Arm Embedded GCC **13.2.1-1.1**, Windows x64 (`xpack-arm-none-eabi-gcc-13.2.1-1.1-win32-x64.zip`) |
+| Executable | `D:\Eigene Dateien\Eigene Dokumente\Playground\Daisy-Seed\.tools\xpack-arm-none-eabi-gcc-13.2.1-1.1\bin\arm-none-eabi-objdump.exe` |
+| Version | `GNU objdump (xPack GNU Arm Embedded GCC x86_64) 2.41.0.20231009` (`--version`) |
+| Executable SHA-256 | `d705c70e543e61855b9aefcd88c926d8c5b6ca6152fc8287f71a339bfe2ff956` (1,704,120 bytes) |
+| Local tree | 5,386 files; manifest `D:\L2A-cases\_toolchain\xpack-arm-none-eabi-gcc-13.2.1-1.1.sha256` (paths relative to `.tools`); manifest SHA-256 `0968549599570c156f49c1d65a2fa7451154300bb5fe65b66b3b0e7c362bc47b` |
+| Code signature | none (`Get-AuthenticodeSignature`: `NotSigned`) |
+| How it was installed | By the Daisy-Seed script `diagnostics/scripts/install-toolchain-windows.sh` on 2026-11-01. The script downloads the ZIP from the [xPack GitHub release v13.2.1-1.1](https://github.com/xpack-dev-tools/arm-none-eabi-gcc-xpack/releases/tag/v13.2.1-1.1), checks its SHA-256 `56b18ccb0a50f536332ec5de57799342ff0cd005ca2c54288c74759b51929e4f` before unpacking, and then leaves the marker `arm-gcc.zip.done` |
+| Typical call | Raw image: `arm-none-eabi-objdump -D -b binary -m arm -M force-thumb --adjust-vma=<base> --start-address=<a> --stop-address=<b> <file.bin>`. ELF: `arm-none-eabi-objdump -d -M force-thumb --start-address=<a> --stop-address=<b> <file.elf>` (an ELF shows symbols: only where the case allows them). Both MEASURED 2026-11-04 on the step-6 target: `0x2400ecee` decodes as `vseleq.f32`, where Ghidra shows `cdp2` |
+
+**Provenance: NOT VERIFIED against the official archive by L2A.** The install script's checksum check is indirect
+evidence only: L2A did not see that run, and the archive was deleted afterwards. To verify, download the official ZIP
+(with the owner's consent), compare its SHA-256 with the value on the release page, and compare every file with the
+manifest above, as for Ghidra.
+
+The install lives in another project's folder. If Daisy-Seed removes or updates `.tools`, this record no longer
+applies: re-pin in a small PR.
+
 ## Re-check
 
-Recompute a manifest and compare it with the recorded one. In Git Bash:
+Recompute a manifest and compare it with the recorded one. In Git Bash, Ghidra:
 
 ```bash
 cd /c/Tools && find ghidra_12.1.4_PUBLIC -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
 ```
 
-A different result means files in the install changed. The per-file manifest in `D:\L2A-cases\_toolchain\` shows which ones.
+xPack objdump tree (paths relative to `.tools`, C sort order, `sha256sum` lines with the `*` binary marker, LF endings).
+The first command must print the manifest hash recorded above; the second checks every listed file:
+
+```bash
+cd "/d/Eigene Dateien/Eigene Dokumente/Playground/Daisy-Seed/.tools" && find xpack-arm-none-eabi-gcc-13.2.1-1.1 -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
+```
+
+```bash
+cd "/d/Eigene Dateien/Eigene Dokumente/Playground/Daisy-Seed/.tools" && sha256sum --quiet -c /d/L2A-cases/_toolchain/xpack-arm-none-eabi-gcc-13.2.1-1.1.sha256
+```
+
+A different hash means files in an install changed, or files were added. The per-file manifest in
+`D:\L2A-cases\_toolchain\` shows which ones.

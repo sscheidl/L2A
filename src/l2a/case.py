@@ -43,8 +43,9 @@ def git_excludes(checkout: Path, path: Path) -> bool:
     """True only if git confirms that `path`, below `checkout`, is deliberately kept out of that checkout.
 
     The deciding rule must come from the checkout's own `info/exclude`, which is local and never pushed. A `.gitignore`
-    match does not count: those patterns catch cases created in a checkout by mistake. Nothing below `path` may be
-    tracked. Every failure counts as "not excluded": no git, a broken `.git`, a timeout, unexpected output.
+    match or a `core.excludesFile` rule does not count: those patterns catch cases created in a checkout by mistake, or
+    live outside it. Nothing below `path` may be tracked, in any spelling. Every failure counts as "not excluded": no
+    git, a broken `.git`, a timeout, unexpected output.
     """
     rel = path.relative_to(checkout).as_posix()
     if rel == "." or rel.startswith(":"):  # a leading ":" would be pathspec magic; check-ignore cannot turn that off
@@ -59,14 +60,34 @@ def git_excludes(checkout: Path, path: Path) -> bool:
 
     try:
         ignored = run("check-ignore", "-v", "-z", "--no-index", "--stdin", stdin=os.fsencode(rel) + b"\0")
-        tracked = run("ls-files", "-z", "--", rel)
-    except (OSError, subprocess.SubprocessError):
+        tracked = run("ls-files", "-z")
+        own_rules = run("rev-parse", "--git-path", "info/exclude")
+        if ignored.returncode != 0 or tracked.returncode != 0 or own_rules.returncode != 0:
+            return False
+        # One record for the one path asked about: source, line, pattern, path, and the end after the last NUL.
+        fields = ignored.stdout.split(b"\0")
+        if len(fields) != 5 or fields[3] != os.fsencode(rel) or fields[4]:
+            return False
+        source, line, pattern = fields[:3]
+        if not line.isdigit() or int(line) < 1 or not pattern or pattern.startswith(b"!"):
+            return False
+        if tracked_below(tracked.stdout, rel):
+            return False
+        own_file = os.fsdecode(own_rules.stdout.rstrip(b"\r\n"))
+        return os.path.samefile(checkout / os.fsdecode(source), checkout / own_file)
+    except (OSError, ValueError, subprocess.SubprocessError):
         return False
-    fields = ignored.stdout.split(b"\0")
-    if ignored.returncode != 0 or tracked.returncode != 0 or tracked.stdout or len(fields) < 3:
-        return False
-    source, pattern = fields[0].replace(b"\\", b"/"), fields[2]
-    return source.endswith(b"info/exclude") and not pattern.startswith(b"!")
+
+
+def tracked_below(index: bytes, rel: str) -> bool:
+    """True if `ls-files -z` output names `rel` or anything below it, ignoring case.
+
+    A pathspec is not enough: it compares case exactly, while NTFS treats `l2a-cases` and `L2A-cases` as one folder.
+    Folding also refuses a different spelling on a case-sensitive file system, which is the safe side.
+    """
+    folded = rel.casefold()
+    names = (entry.decode("utf-8", "surrogateescape").casefold() for entry in index.split(b"\0"))
+    return any(name == folded or name.startswith(folded + "/") for name in names)
 
 
 def blocking_checkout(path: Path) -> Path | None:

@@ -77,6 +77,59 @@ class ExcludedCaseTest(unittest.TestCase):
         with self.assertRaisesRegex(CaseError, "inside the git checkout"):
             self.case.check_not_in_git()
 
+    def test_file_tracked_under_another_spelling_is_refused(self):
+        lower = self.repo / "l2a-cases" / "one" / "out"
+        lower.mkdir(parents=True)
+        (lower / "result.txt").write_text("x", encoding="utf-8")
+        self.git(self.repo, "add", "-f", "l2a-cases/one/out/result.txt")
+        (self.repo / "l2a-cases").rename(self.repo / "moved")
+        (self.repo / "moved").rename(self.repo / "L2A-cases")
+        with self.assertRaisesRegex(CaseError, "inside the git checkout"):
+            self.case.check_not_in_git()
+        with self.assertRaisesRegex(CaseError, "inside the git checkout"):
+            self.case.resolve_out("dump.txt")
+
+    def test_similar_tracked_name_does_not_block(self):
+        (self.repo / "L2A-cases").mkdir()
+        (self.repo / "L2A-cases" / "one-more").write_text("x", encoding="utf-8")
+        self.git(self.repo, "add", "-f", "L2A-cases/one-more")
+        self.case.check_not_in_git()
+
+    def test_rule_from_a_foreign_exclude_file_is_refused(self):
+        self.exclude("")
+        foreign = self.repo.parent / "foreign" / "info" / "exclude"
+        foreign.parent.mkdir(parents=True)
+        foreign.write_text("/L2A-cases/\n", encoding="utf-8")
+        self.git(self.repo, "config", "core.excludesFile", foreign.as_posix())
+        with self.assertRaisesRegex(CaseError, "inside the git checkout"):
+            self.case.check_not_in_git()
+
+    def check_ignore_answers(self, stdout):
+        """Run the guard with `stdout` as the answer of check-ignore; the other git calls stay real."""
+        real = subprocess.run
+
+        def fake(cmd, **kwargs):
+            if "check-ignore" in cmd:
+                return subprocess.CompletedProcess(cmd, 0, stdout=stdout, stderr=b"")
+            return real(cmd, **kwargs)
+
+        with mock.patch.object(casemod.subprocess, "run", side_effect=fake):
+            return casemod.git_excludes(self.repo, self.case.root)
+
+    def test_only_one_complete_check_ignore_record_counts(self):
+        source = str(self.repo / ".git" / "info" / "exclude").encode()
+        path = b"L2A-cases/one"
+        self.assertTrue(self.check_ignore_answers(b"\0".join([source, b"1", b"/L2A-cases/", path, b""])))
+        for bad in (b"\0".join([source, b"1", b""]),
+                    b"\0".join([source, b"1", b"", path, b""]),
+                    b"\0".join([source, b"0", b"/L2A-cases/", path, b""]),
+                    b"\0".join([source, b"x", b"/L2A-cases/", path, b""]),
+                    b"\0".join([source, b"1", b"!/L2A-cases/", path, b""]),
+                    b"\0".join([source, b"1", b"/L2A-cases/", b"L2A-cases/two", b""]),
+                    b"\0".join([source, b"1", b"/L2A-cases/", path]),
+                    b"\0".join([source, b"1", b"/L2A-cases/", path, source, b"1", b"x", path, b""])):
+            self.assertFalse(self.check_ignore_answers(bad), bad)
+
     def test_checkout_root_is_refused(self):
         with self.assertRaisesRegex(CaseError, "inside the git checkout"):
             Case.at(self.repo).check_not_in_git()

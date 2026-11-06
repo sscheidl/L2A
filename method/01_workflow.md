@@ -100,7 +100,7 @@ Many targets delegate the DSP to a library: Csound, Pd, JUCE, CMSIS-DSP, DaisySP
   * List the archive before extracting it. Accept only regular files and directories. Refuse links and every other
     member type (devices, FIFOs), absolute paths, `..` entries and Windows drive or UNC paths, and check that every
     member stays inside the destination.
-  * Extract into a new, empty folder, then move it to `D:\L2A-cases\<case>\`.
+  * Extract into a new, empty folder, then move it to `L2A-cases\<case>\`.
   * Read `SHA256SUMS` as data first: every path in it must be relative, stay inside the case, and name a regular file
     from the listing. Only then run `sha256sum -c SHA256SUMS`, without running any delivered script. Also compare the
     other way: a delivered file that the manifest does not list is a finding too. So is a missing file. Note both in the

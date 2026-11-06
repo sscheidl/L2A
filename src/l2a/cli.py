@@ -29,7 +29,8 @@ def _log(msg: str) -> None:
 
 def open_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="l2a open", description="Import a target into the case's Ghidra project and analyse it once.")
-    p.add_argument("case", help="case folder (created if missing; must be outside every git checkout)")
+    p.add_argument("case", help="case folder (created if missing; outside every git checkout, or listed in its "
+                                     ".git/info/exclude)")
     p.add_argument("target", help="target file; copied into <case>/target/ if it is outside the case")
     p.add_argument("--profile", required=True, choices=list(profiles.PROFILES),
                    help="; ".join(f"{n}: {pr.help}" for n, pr in profiles.PROFILES.items()))

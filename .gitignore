@@ -1,6 +1,6 @@
 # L2A is a PUBLIC repository. Proprietary targets, decompiler output and
 # case results must never be committed (L2A_Concept_v0.3.md, section 5).
-# Private cases live outside every checkout (default: D:\L2A-cases\).
+# Private cases live in L2A-cases/, excluded locally through .git/info/exclude.
 
 # Case data, if someone creates it inside the checkout by mistake
 cases/

@@ -13,7 +13,7 @@ Hardware and listening results are NOT MEASURED.
 > [!WARNING]
 > This repository is **public**. It holds only L2A's own code, schemas and documentation.
 > Proprietary binaries, decompiler output and case results are never committed; cases live
-> outside the checkout (see [concept §5](docs/L2A_Concept_v0.3.md#5-security-pragmatic)).
+> in a local, git-excluded folder (see [concept §5](docs/L2A_Concept_v0.3.md#5-security-pragmatic)).
 
 ## Documents
 

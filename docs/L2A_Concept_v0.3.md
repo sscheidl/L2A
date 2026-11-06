@@ -49,7 +49,7 @@ Why PyGhidra:
 * REA, by contrast, refuses ELF and raw ARM on Windows [F].
 
 ```
-D:\L2A-cases\<case>\      case.md, target files, ghidra\, notes   (local, never in git)
+L2A-cases\<case>\         case.md, target files, ghidra\, notes   (local, never in git)
       ▲
   l2a open | query   (Python + PyGhidra)          method\*.md   (DSP skills, read by any agent)
       ▼
@@ -160,7 +160,7 @@ These are the project's own text (nothing copied from REA): guidance, not mandat
 ## 5. Security (pragmatic)
 
 * **Public repo.** No binaries, firmware, plugins, decompiler output, Ghidra projects or case results. Cases live in
-  `D:\L2A-cases\`. `.gitignore`, a tiny check, and the rule that `l2a query --out` writes only inside the case folder (§3) back this up.
+  `L2A-cases\` in the local checkout, excluded through `.git/info/exclude` (owner decision 2026-11-05). `.gitignore`, a tiny check, and the rule that `l2a query --out` writes only inside the case folder (§3) back this up.
 * **Pinned tools.** Record the hashes of Ghidra and the JDK once and compare them with the official downloads. Where the
   current `C:\Tools` installs came from is not recorded yet [O]. Install PyGhidra offline. No silent updates.
 * **Target text is data.** Strings and decompiler output can contain injected instructions. REA files are study objects only:

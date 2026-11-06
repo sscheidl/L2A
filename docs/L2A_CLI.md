@@ -10,12 +10,12 @@ Use the PyGhidra venv from [TOOLCHAIN.md](TOOLCHAIN.md). From the repository roo
 
 ```bash
 D='C:\Tools\ghidra_12.1.4_PUBLIC\Ghidra\Features\PyGhidra\pypkg\dist'
-V=/d/L2A-cases/_toolchain/pyghidra-venv/Scripts
+V=L2A-cases/_toolchain/pyghidra-venv/Scripts
 $V/python.exe -m pip install --no-index --find-links "$D" setuptools
 $V/python.exe -m pip install --no-index --no-build-isolation -e .
 ```
 
-The command is then `D:\L2A-cases\_toolchain\pyghidra-venv\Scripts\l2a.exe`. `l2a` uses the pinned Ghidra and JDK
+The command is then `L2A-cases\_toolchain\pyghidra-venv\Scripts\l2a.exe`. `l2a` uses the pinned Ghidra and JDK
 paths from TOOLCHAIN.md. `GHIDRA_INSTALL_DIR` and `JAVA_HOME_OVERRIDE` can point elsewhere, but the tool set must still
 be the reviewed one. `l2a` stops before starting Ghidra in any of these cases:
 * the Ghidra version is not the pinned one;
@@ -41,7 +41,11 @@ l2a open <case> <target> --profile <profile> [--base ADDR] [--language ID] [--co
 | `pe` | PeLoader | from the file | Windows EXE or DLL, for example a VST3 binary |
 | `raw` | BinaryLoader | `--language` | Any raw image; needs `--language` and `--base` |
 
-* The case folder is created if it is missing. It must lie outside every git checkout.
+* The case folder is created if it is missing. It lies outside every git checkout, or is a direct subfolder of
+  `L2A-cases\` at the top of a checkout, with a name that starts with neither `_` nor `.`, because `_sealed` and
+  `_toolchain` are not cases. The second place also needs git's confirmation: the deciding rule must come from
+  `.git/info/exclude`, not from a `.gitignore`, and nothing below the case may be tracked. If git cannot confirm this,
+  for example when git is missing, the case is refused.
 * Before writing anything, `l2a open` and `l2a query` check that `target\`, `ghidra\`, `out\`, `case.md`, the import
   record and the project file are not links or junctions, do not resolve outside the case, and contain no nested
   checkout.
@@ -114,7 +118,7 @@ a bare hex string is used only when no symbol has that name.
 Example:
 
 ```text
-l2a query D:\L2A-cases\pm -p PhysicalModeling-v0.1.0.bin functions --sort fp --max-lines 10 --then decompile 0x24001624 --out dsp.c --then search --float 48000
+l2a query L2A-cases\pm -p PhysicalModeling-v0.1.0.bin functions --sort fp --max-lines 10 --then decompile 0x24001624 --out dsp.c --then search --float 48000
 ```
 
 ## Tests

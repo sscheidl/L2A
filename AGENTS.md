@@ -14,7 +14,9 @@ Read [docs/L2A_Concept_v0.3.md](docs/L2A_Concept_v0.3.md) first. The owner appro
 ## Rules
 
 * **Public repository.** Never commit binaries, firmware, plugins, decompiler output, Ghidra projects
-  or case results. Cases live outside every checkout (default `D:\L2A-cases\`).
+  or case results. Cases live in `L2A-cases\` inside this checkout, which `.git/info/exclude` keeps out of git
+  (owner decision 2026-11-05). `l2a` refuses a case in any checkout that does not exclude it this way;
+  a `.gitignore` match is not enough.
 * **Data.** Original binaries and Ghidra projects stay local. Pseudocode, disassembly and analysis notes may be
   processed by Claude or Codex. Originals may be uploaded to a cloud agent session only for our own or openly licensed
   targets, and the result comes back as one checksummed archive of the case folder (`method/01_workflow.md`).

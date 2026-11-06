@@ -6,10 +6,13 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+GIT_TIMEOUT_S = 15
+CASES_FOLDER = "L2A-cases"
 RECORD_NAME = "l2a-imports.json"
 IMPORTS_BEGIN = "<!-- l2a:imports:begin -->"
 IMPORTS_END = "<!-- l2a:imports:end -->"
@@ -32,6 +35,44 @@ def git_checkout_of(path: Path) -> Path | None:
     """The git checkout containing `path` (a directory with `.git`, folder or file), or None."""
     for p in [path, *path.parents]:
         if (p / ".git").exists():
+            return p
+    return None
+
+
+def git_excludes(checkout: Path, path: Path) -> bool:
+    """True only if git confirms that `path`, below `checkout`, is deliberately kept out of that checkout.
+
+    The deciding rule must come from the checkout's own `info/exclude`, which is local and never pushed. A `.gitignore`
+    match does not count: those patterns catch cases created in a checkout by mistake. Nothing below `path` may be
+    tracked. Every failure counts as "not excluded": no git, a broken `.git`, a timeout, unexpected output.
+    """
+    rel = path.relative_to(checkout).as_posix()
+    if rel == "." or rel.startswith(":"):  # a leading ":" would be pathspec magic; check-ignore cannot turn that off
+        return False
+    # An explicit --git-dir stops git from walking up to an outer repository when this `.git` is not valid.
+    git = ["git", f"--git-dir={checkout / '.git'}", f"--work-tree={checkout}", "-c", "core.fsmonitor=false"]
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+
+    def run(*args: str, stdin: bytes | None = None) -> subprocess.CompletedProcess:
+        return subprocess.run([*git, *args], cwd=checkout, env=env, input=stdin, capture_output=True,
+                              timeout=GIT_TIMEOUT_S)
+
+    try:
+        ignored = run("check-ignore", "-v", "-z", "--no-index", "--stdin", stdin=os.fsencode(rel) + b"\0")
+        tracked = run("ls-files", "-z", "--", rel)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    fields = ignored.stdout.split(b"\0")
+    if ignored.returncode != 0 or tracked.returncode != 0 or tracked.stdout or len(fields) < 3:
+        return False
+    source, pattern = fields[0].replace(b"\\", b"/"), fields[2]
+    return source.endswith(b"info/exclude") and not pattern.startswith(b"!")
+
+
+def blocking_checkout(path: Path) -> Path | None:
+    """The first git checkout around `path` that does not deliberately exclude it, or None."""
+    for p in [path, *path.parents]:
+        if (p / ".git").exists() and not git_excludes(p, path):
             return p
     return None
 
@@ -108,14 +149,18 @@ class Case:
         return self.root / "case.md"
 
     def check_not_in_git(self) -> None:
-        checkout = git_checkout_of(self.root)
+        checkout = blocking_checkout(self.root)
         if checkout is not None:
-            raise CaseError(f"case folder {self.root} is inside the git checkout {checkout}; "
-                            "cases must live outside every checkout (default D:\\L2A-cases\\)")
+            raise CaseError(f"case folder {self.root} is inside the git checkout {checkout}; cases must live outside "
+                            "every checkout, or in a folder listed in that checkout's .git/info/exclude")
+        inner = git_checkout_of(self.root)
+        if inner is not None and (self.root.parent != inner / CASES_FOLDER or self.root.name.startswith(("_", "."))):
+            raise CaseError(f"case folder {self.root} is not a case: inside a checkout, a case is a direct subfolder of "
+                            f"{inner / CASES_FOLDER} whose name starts with neither _ nor .")
 
     def check_layout(self) -> None:
-        """Before any write: the case is outside every checkout, and none of the folders or files l2a writes is a
-        link, a junction, or a nested checkout that would redirect the write."""
+        """Before any write: the case is outside every checkout or deliberately excluded from it, and none of the
+        folders or files l2a writes is a link, a junction, or a nested checkout that would redirect the write."""
         self.check_not_in_git()
         for p in (self.target_dir, self.ghidra_dir, self.out_dir, self.case_md, self.record_file, self.project_file):
             if is_link(p):
@@ -141,7 +186,8 @@ class Case:
         """Resolve a `--out` path. Relative paths go to `<case>/out/`.
 
         Inside the case folder, only `<case>/out/` is allowed; the project, records, targets and case.md are never
-        overwritten. Paths outside the case folder, or inside any git checkout, need `allow_outside`.
+        overwritten. Paths outside the case folder, or in a git checkout that does not exclude them, need
+        `allow_outside`.
         """
         p = Path(out)
         path = (p if p.is_absolute() else self.out_dir / p).resolve()
@@ -151,7 +197,7 @@ class Case:
         elif not allow_outside:
             raise CaseError(f"--out {path} is outside the case folder {self.root}; use --allow-outside to override")
         if not allow_outside:
-            checkout = git_checkout_of(path.parent)
+            checkout = blocking_checkout(path.parent)
             if checkout is not None:
                 raise CaseError(f"--out {path} is inside the git checkout {checkout}; use --allow-outside to override")
         return path

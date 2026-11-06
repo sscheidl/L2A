@@ -110,7 +110,8 @@ a bare hex string is used only when no symbol has that name.
   * Relative paths go to `<case>\out\`.
   * Inside the case, only `<case>\out\` is allowed. The project, record, targets and `case.md` can never be
     overwritten, not even with `--allow-outside`.
-  * Paths outside the case folder, or inside a git checkout, need `--allow-outside`.
+  * Paths outside the case folder, or in a git checkout that does not exclude them, need `--allow-outside`. So `out\` of
+    a case in `L2A-cases` needs no option.
   * The file is written new and swapped in, so a hard link never receives the content.
   * The path is checked again right before writing. This narrows a race with a concurrent change of the folder,
     but does not rule it out.

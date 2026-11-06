@@ -38,6 +38,10 @@ A matching coefficient supports a formula; it does not by itself identify the al
   Use `xrefs`, the callers and the callees. [F: in two cases, an interpretation drawn from one path was wrong.]
 * This is bounded tracing, not proof of a complete data flow. Base-plus-offset accesses, aliases and indirect calls can
   hide readers and writers. List the ones you could not resolve.
+* An idiom whose purpose is unknown but that recurs across many functions is a lead, not a detail. Ask which surroundings
+  would make it sensible, and look for public documentation of the platform before a port or a recommendation relies
+  on it. Until then, do not describe it as behaviour to preserve. [F: a filter in 104 programs compensated a lag in the chip;
+  a report listed its overshoot as behaviour to preserve, and the port without the lag sounded wrong.]
 
 ## Offline model (when the arithmetic is clear)
 
@@ -50,6 +54,14 @@ A matching coefficient supports a formula; it does not by itself identify the al
   settings, and its output (for example `out/frozen-<date>/` with a `SHA256SUMS`). A hash alone identifies a lost
   script but cannot restore it. Later edits are a new working state; say so in the session log. The copy stays in
   the case, never in the repository.
+* A binary shows the program, not the chip or board around it. List each stage between the outside world and the code's
+  inputs and outputs (converters, input filters, clocks, memory formats) and mark it modelled or not modelled. An omitted
+  stage is an assumption like any other and belongs in the assumption list.
+* Test with controls and inputs that change during the run, not only with fixed settings. Fixed settings cannot show
+  a control path.
+* Agreement between two of our own implementations shows that they are consistent, not that either matches the target.
+  They share their assumptions. Say so next to the number. [F: an interpreter matched its model to 4e-16 while both lacked
+  the same input stage.]
 * A model result is MEASURED for the model, not for the target. A cause that explains a difference between the model
   and the nominal value stays *inferred* until it is tested.
 * The model is analysis evidence, not a product. L2A builds no effects ([concept §8](../docs/L2A_Concept_v0.3.md)).
@@ -105,4 +117,4 @@ A hash proves that a file did not change, not that an assessor was independent. 
 * Is the evidence an address, instruction or constant that someone else can look up?
 * Was the interpretation recomputed or cross-checked, or is it marked *inferred*?
 * Is each part of the row labelled at its own level (bits, relationship, interpretation, model, target)?
-* Is what was **not** checked written down?
+* Is what was **not** checked written down, including the stages around the code that the model leaves out?

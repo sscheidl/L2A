@@ -43,9 +43,11 @@ l2a open <case> <target> --profile <profile> [--base ADDR] [--language ID] [--co
 
 * The case folder is created if it is missing. It lies outside every git checkout, or is a direct subfolder of
   `L2A-cases\` at the top of a checkout, with a name that starts with neither `_` nor `.`, because `_sealed` and
-  `_toolchain` are not cases. The second place also needs git's confirmation: the deciding rule must come from
-  `.git/info/exclude`, not from a `.gitignore`, and nothing below the case may be tracked. If git cannot confirm this,
-  for example when git is missing, the case is refused.
+  `_toolchain` are not cases. The second place also needs git's confirmation: the deciding rule must come from the
+  checkout's own `.git/info/exclude`, not from a `.gitignore` or `core.excludesFile`, and nothing below the case may be
+  tracked, in any spelling of its path. If git cannot confirm this, for example when git is missing, the case is refused.
+* Known limit: on Windows, path checks ignore case. Do not enable NTFS per-directory case sensitivity for a checkout or
+  a case folder, because two folders that differ only in case would then count as one.
 * Before writing anything, `l2a open` and `l2a query` check that `target\`, `ghidra\`, `out\`, `case.md`, the import
   record and the project file are not links or junctions, do not resolve outside the case, and contain no nested
   checkout.

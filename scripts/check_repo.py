@@ -51,7 +51,7 @@ def problems(root: Path) -> list[str]:
     found = [f"tracked but matches .gitignore: {p!r}" for p in paths(root, "-ci", "--exclude-standard")]
     for p in paths(root):
         parts = p.split("/")
-        if parts[0] == "L2A-cases":
+        if parts[0].casefold() == "l2a-cases":  # NTFS does not tell the spellings apart
             found.append(f"local case folder tracked: {p!r}")
         if parts[-1] in CASE_FILES and p not in ALLOWED_CASE_FILES:
             found.append(f"case file tracked: {p!r}")

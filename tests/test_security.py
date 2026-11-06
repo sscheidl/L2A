@@ -171,6 +171,10 @@ class F5F6RepoGuardTest(unittest.TestCase):
         self.add("L2A-cases/note.txt")
         self.assertTrue(any("local case folder tracked" in p for p in check_repo.problems(self.root)))
 
+    def test_local_case_folder_in_another_spelling_is_reported(self):
+        self.add("l2a-cases/note.txt")
+        self.assertTrue(any("local case folder tracked" in p for p in check_repo.problems(self.root)))
+
     def test_case_layout_is_reported(self):
         for rel in ("one-case/case.md", "one-case/ghidra/l2a-imports.json", "one-case/out/notes.c",
                     "one-case/ghidra-backup-20261103/analysis.txt", "one-case/target-backup-20261103/fw.upd",

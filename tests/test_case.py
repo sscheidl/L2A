@@ -1,10 +1,103 @@
+import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import _src  # noqa: F401
 from l2a import case as casemod
 from l2a.case import Case, CaseError
+
+
+@unittest.skipUnless(shutil.which("git"), "needs git")
+class ExcludedCaseTest(unittest.TestCase):
+    """A case inside a checkout is allowed only when git confirms a rule from that checkout's info/exclude."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.repo = Path(self.tmp.name).resolve() / "repo"
+        self.repo.mkdir()
+        self.git(self.repo, "init", "-q")
+        self.exclude("/L2A-cases/\n")
+        self.case = Case.at(self.repo / "L2A-cases" / "one")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def git(self, cwd, *args):
+        subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
+
+    def exclude(self, text):
+        (self.repo / ".git" / "info" / "exclude").write_text(text, encoding="utf-8")
+
+    def test_excluded_case_is_allowed_even_before_it_exists(self):
+        self.assertFalse(self.case.root.exists())
+        self.case.check_layout()
+        self.case.root.mkdir(parents=True)
+        self.case.check_layout()
+
+    def test_spaces_and_non_ascii_names_are_allowed(self):
+        Case.at(self.repo / "L2A-cases" / "Fälle Nr 1").check_layout()
+
+    def test_out_inside_an_excluded_case_is_allowed(self):
+        self.case.root.mkdir(parents=True)
+        self.assertEqual(self.case.resolve_out("dump.txt"), self.case.out_dir / "dump.txt")
+
+    def test_only_a_plain_direct_subfolder_is_a_case(self):
+        root = self.repo / "L2A-cases"
+        for bad in (root, root / "_sealed", root / ".hidden", root / "one" / "nested"):
+            with self.assertRaises(CaseError, msg=str(bad)):
+                Case.at(bad).check_not_in_git()
+
+    def test_other_excluded_folder_is_refused(self):
+        self.exclude("/other/\n")
+        with self.assertRaisesRegex(CaseError, "direct subfolder"):
+            Case.at(self.repo / "other" / "one").check_not_in_git()
+
+    def test_gitignore_match_does_not_count(self):
+        self.exclude("")
+        (self.repo / ".gitignore").write_text("/L2A-cases/\n", encoding="utf-8")
+        with self.assertRaisesRegex(CaseError, "inside the git checkout"):
+            self.case.check_not_in_git()
+
+    def test_unlisted_folder_is_refused(self):
+        with self.assertRaisesRegex(CaseError, "inside the git checkout"):
+            Case.at(self.repo / "elsewhere" / "one").check_not_in_git()
+
+    def test_negated_rule_is_refused(self):
+        self.exclude("/L2A-cases/*\n!/L2A-cases/one\n")
+        with self.assertRaisesRegex(CaseError, "inside the git checkout"):
+            self.case.check_not_in_git()
+
+    def test_tracked_file_below_the_case_is_refused(self):
+        self.case.root.mkdir(parents=True)
+        (self.case.root / "case.md").write_text("x", encoding="utf-8")
+        self.git(self.repo, "add", "-f", "L2A-cases/one/case.md")
+        with self.assertRaisesRegex(CaseError, "inside the git checkout"):
+            self.case.check_not_in_git()
+
+    def test_checkout_root_is_refused(self):
+        with self.assertRaisesRegex(CaseError, "inside the git checkout"):
+            Case.at(self.repo).check_not_in_git()
+
+    def test_no_git_or_a_hanging_git_is_refused(self):
+        for error in (FileNotFoundError("git"), subprocess.TimeoutExpired("git", 1)):
+            with mock.patch.object(casemod.subprocess, "run", side_effect=error):
+                with self.assertRaisesRegex(CaseError, "inside the git checkout"):
+                    self.case.check_not_in_git()
+
+    def test_invalid_inner_git_does_not_fall_through_to_the_outer_repository(self):
+        inner = self.repo / "L2A-cases" / "fake"
+        (inner / ".git").mkdir(parents=True)
+        with self.assertRaisesRegex(CaseError, "inside the git checkout"):
+            Case.at(inner / "one").check_not_in_git()
+
+    def test_outer_checkout_must_exclude_too(self):
+        outer = self.repo.parent
+        self.git(outer, "init", "-q")
+        with self.assertRaisesRegex(CaseError, "inside the git checkout"):
+            self.case.check_not_in_git()
 
 
 class CaseTest(unittest.TestCase):

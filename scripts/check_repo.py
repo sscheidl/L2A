@@ -3,6 +3,7 @@
 Fails if a tracked file
 * matches a .gitignore pattern (for example *.bin, *.dll, Ghidra projects),
 * belongs to a case layout (case.md outside templates/, l2a-imports.json, ghidra-backup-*/, target-backup-*/),
+* lies in the local case folder L2A-cases/,
 * or is larger than the size limit in the index (what would be committed).
 
 Paths are read NUL-separated, so unusual or non-ASCII file names cannot slip past. Standard library only.
@@ -50,6 +51,8 @@ def problems(root: Path) -> list[str]:
     found = [f"tracked but matches .gitignore: {p!r}" for p in paths(root, "-ci", "--exclude-standard")]
     for p in paths(root):
         parts = p.split("/")
+        if parts[0] == "L2A-cases":
+            found.append(f"local case folder tracked: {p!r}")
         if parts[-1] in CASE_FILES and p not in ALLOWED_CASE_FILES:
             found.append(f"case file tracked: {p!r}")
         if any(part.startswith(BACKUP_PREFIXES) for part in parts):

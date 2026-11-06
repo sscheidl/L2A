@@ -3,8 +3,8 @@
 Runs only locally and only when L2A_GHIDRA_IT=1 (about two minutes). It needs the venv with PyGhidra and two
 targets from our own Daisy build (never committed):
 
-    L2A_IT_BIN  raw image   (default D:\\L2A-cases\\pyghidra-check\\target\\PhysicalModeling-v0.1.0.bin)
-    L2A_IT_ELF  same build  (default D:\\L2A-cases\\pyghidra-check\\target\\PhysicalModeling-v0.1.0.elf)
+    L2A_IT_BIN  raw image   (default L2A-cases\\pyghidra-check\\target\\PhysicalModeling-v0.1.0.bin)
+    L2A_IT_ELF  same build  (default L2A-cases\\pyghidra-check\\target\\PhysicalModeling-v0.1.0.elf)
 
 The test case folder is created in the system temp folder and deleted afterwards.
 """
@@ -20,7 +20,7 @@ from pathlib import Path
 
 import _src  # noqa: F401
 
-DEFAULT_TARGETS = Path(r"D:\L2A-cases\pyghidra-check\target")
+DEFAULT_TARGETS = Path(__file__).resolve().parents[1] / "L2A-cases" / "pyghidra-check" / "target"
 BIN = Path(os.environ.get("L2A_IT_BIN", DEFAULT_TARGETS / "PhysicalModeling-v0.1.0.bin"))
 ELF = Path(os.environ.get("L2A_IT_ELF", DEFAULT_TARGETS / "PhysicalModeling-v0.1.0.elf"))
 

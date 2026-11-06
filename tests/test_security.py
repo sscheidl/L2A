@@ -167,6 +167,10 @@ class F5F6RepoGuardTest(unittest.TestCase):
         subprocess.run(["git", "-c", "core.autocrlf=false", "add", "-f", "--", rel], cwd=self.root, check=True,
                        capture_output=True)
 
+    def test_tracked_file_in_local_case_folder_is_reported(self):
+        self.add("L2A-cases/note.txt")
+        self.assertTrue(any("local case folder tracked" in p for p in check_repo.problems(self.root)))
+
     def test_case_layout_is_reported(self):
         for rel in ("one-case/case.md", "one-case/ghidra/l2a-imports.json", "one-case/out/notes.c",
                     "one-case/ghidra-backup-20261103/analysis.txt", "one-case/target-backup-20261103/fw.upd",

@@ -263,5 +263,107 @@ class QueryArgvTest(unittest.TestCase):
         self.assertFalse(p.parse_args(["consts", "main"]).uses)
 
 
+class _AddrSpace:
+    def __init__(self, name, unit):
+        self.name, self.unit = name, unit
+
+    def getAddressableUnitSize(self):
+        return self.unit
+
+    def getAddress(self, byte_offset):
+        if byte_offset >= 1 << 32:
+            raise ValueError("out of range")
+        return (self.name, byte_offset)
+
+
+class _AddrSymbol:
+    def __init__(self, addr):
+        self.addr = addr
+
+    def getAddress(self):
+        return self.addr
+
+
+class _AddrProgram:
+    """Stands in for a Ghidra program: named address spaces, one of them the default, and a symbol table."""
+
+    def __init__(self, spaces, default, symbols=None):
+        self.spaces, self.default, self.symbols = {s.name: s for s in spaces}, default, symbols or {}
+
+    def getAddressFactory(self):
+        return self
+
+    def getAddressSpace(self, name):
+        return self.spaces.get(name)
+
+    def getDefaultAddressSpace(self):
+        return self.spaces[self.default]
+
+    def getSymbolTable(self):
+        return self
+
+    def getSymbols(self, name):
+        return [_AddrSymbol(a) for a in self.symbols.get(name, [])]
+
+
+class ResolveAddressTest(unittest.TestCase):
+    def setUp(self):
+        from l2a import queries
+
+        self.resolve = queries.resolve_address
+        # AVR: flash counts 16-bit words, RAM counts bytes. ARM and PE: one byte-addressed space.
+        self.avr = _AddrProgram([_AddrSpace("code", 2), _AddrSpace("mem", 1)], "code",
+                            {"main": [("code", 0x439c)], "twice": [("code", 2), ("code", 4)], "beef": [("mem", 1)]})
+        self.arm = _AddrProgram([_AddrSpace("ram", 1)], "ram")
+
+    def test_printed_form_round_trips(self):
+        self.assertEqual(self.resolve(self.avr, "code:0c7d"), ("code", 0x18fa))  # word 0x0c7d = byte 0x18fa
+        self.assertEqual(self.resolve(self.avr, "code:0C7D"), ("code", 0x18fa))
+        self.assertEqual(self.resolve(self.avr, "code:0014.1"), ("code", 0x29))  # second byte of word 0x14
+        self.assertEqual(self.resolve(self.avr, "mem:0108"), ("mem", 0x108))  # a space other than the default
+        self.assertEqual(self.resolve(self.arm, "ram:24000749"), ("ram", 0x24000749))
+
+    def test_bare_hex_is_a_byte_offset_in_the_default_space(self):
+        self.assertEqual(self.resolve(self.avr, "0x18fa"), ("code", 0x18fa))  # the same place as code:0c7d
+        self.assertEqual(self.resolve(self.avr, "18fa"), ("code", 0x18fa))
+        self.assertEqual(self.resolve(self.arm, "0x24000749"), ("ram", 0x24000749))  # unchanged for byte spaces
+        self.assertEqual(self.resolve(self.arm, "24000749"), ("ram", 0x24000749))
+
+    def test_symbols(self):
+        self.assertEqual(self.resolve(self.avr, "main"), ("code", 0x439c))
+        self.assertEqual(self.resolve(self.avr, "beef"), ("mem", 1))  # a symbol wins over bare hex
+        self.assertEqual(self.resolve(self.avr, "0xbeef"), ("code", 0xbeef))  # 0x… is always an address
+        with self.assertRaisesRegex(CaseError, "ambiguous"):
+            self.resolve(self.avr, "twice")
+
+    def test_errors(self):
+        for spec, message in (("code:0c7d.2", "has 2 byte"),  # no third byte in a 16-bit unit
+                              ("mem:0108.1", "has 1 byte"),
+                              ("code:ffffffffff", "bad address"),  # the space refuses it
+                              ("nospace:10", "no symbol named"),  # not a space of this program
+                              ("mem:xyz", "no symbol named"),
+                              ("code:", "no symbol named"),
+                              ("mem:01:02", "no symbol named")):
+            with self.assertRaisesRegex(CaseError, message, msg=spec):
+                self.resolve(self.avr, spec)
+
+
+class ModuleEntryTest(unittest.TestCase):
+    def test_python_m_l2a(self):
+        import os
+        import subprocess
+        import sys
+
+        from l2a import __version__
+
+        src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src")
+        env = dict(os.environ, PYTHONPATH=src)
+        r = subprocess.run([sys.executable, "-m", "l2a", "--version"], capture_output=True, text=True, env=env)
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, f"l2a {__version__}"), r.stderr)
+        r = subprocess.run([sys.executable, "-m", "l2a", "nonsense"], capture_output=True, text=True, env=env)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("unknown command", r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -15,6 +15,7 @@ from .output import quote
 from .profiles import parse_addr
 
 HEX = re.compile(r"^(0x)?[0-9a-fA-F]+$")
+SPACE_ADDR = re.compile(r"^([A-Za-z_][A-Za-z0-9_.]*):([0-9a-fA-F]+)(?:\.([0-9a-fA-F]+))?$")
 MAX_REF_NOTES = 2  # data-reference notes per disassembly line
 
 
@@ -24,8 +25,37 @@ def _space(program):
     return program.getAddressFactory().getDefaultAddressSpace()
 
 
+def _space_address(program, spec: str):
+    """`space:offset`, as l2a prints addresses (`code:0c7d`, `mem:0108`, `code:0014.1`), or None.
+
+    The offset counts addressable units of that space, as Ghidra prints it, and `.n` adds n bytes inside a unit.
+    Only a name of one of the program's address spaces is taken; anything else is left to the symbol lookup.
+    """
+    m = SPACE_ADDR.match(spec)
+    if not m:
+        return None
+    space = program.getAddressFactory().getAddressSpace(m.group(1))
+    if space is None:
+        return None
+    unit = int(space.getAddressableUnitSize())
+    sub = int(m.group(3), 16) if m.group(3) else 0
+    if sub >= unit:
+        raise CaseError(f"bad address {quote(spec)}: a unit of space {quote(m.group(1))} has {unit} byte(s)")
+    try:
+        return space.getAddress(int(m.group(2), 16) * unit + sub)  # one argument: a byte offset
+    except Exception as e:
+        raise CaseError(f"bad address {quote(spec)}: {quote(e)}") from None
+
+
 def resolve_address(program, spec: str):
-    """`0x...` is always an address; otherwise a symbol name, falling back to bare hex."""
+    """`space:offset` or `0x...` is always an address; otherwise a symbol name, falling back to bare hex.
+
+    `0x...` and bare hex are byte offsets in the default space. Where a space counts in larger units (AVR flash
+    counts 16-bit words), the printed `code:0c7d` therefore differs from `0x18fa`; both name the same place.
+    """
+    addr = _space_address(program, spec)
+    if addr is not None:
+        return addr
     if not spec.lower().startswith("0x"):
         syms = list(program.getSymbolTable().getSymbols(spec))
         addrs = sorted({str(s.getAddress()) for s in syms})

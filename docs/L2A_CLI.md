@@ -15,7 +15,16 @@ $V/python.exe -m pip install --no-index --find-links "$D" setuptools
 $V/python.exe -m pip install --no-index --no-build-isolation -e .
 ```
 
-The command is then `L2A-cases\_toolchain\pyghidra-venv\Scripts\l2a.exe`. `l2a` uses the pinned Ghidra and JDK
+The command is then `L2A-cases\_toolchain\pyghidra-venv\Scripts\l2a.exe`, or `python.exe -m l2a` with the venv's
+Python.
+
+**After moving the venv**, run both install lines again, and reinstall PyGhidra as in TOOLCHAIN.md with
+`--force-reinstall --no-deps`. The `.exe` launchers in `Scripts\` (`l2a.exe`, `pip.exe`, `pyghidra.exe`) store the
+absolute path of the venv's Python. A launcher whose Python is gone prints nothing and exits with code 1
+(MEASURED 2026-11-15, after the venv had moved from `D:\L2A-cases\_toolchain\` into the checkout). `python.exe -m l2a`
+and `python.exe -m pip` keep working in that state, because they do not go through a launcher.
+
+`l2a` uses the pinned Ghidra and JDK
 paths from TOOLCHAIN.md. `GHIDRA_INSTALL_DIR` and `JAVA_HOME_OVERRIDE` can point elsewhere, but the tool set must still
 be the reviewed one. `l2a` stops before starting Ghidra in any of these cases:
 * the Ghidra version is not the pinned one;
@@ -97,8 +106,18 @@ change or save the project. If the target file has changed since the import, a w
 | `table <addr> [--type T] [--count N] [--stride B]` | Typed read: `float32`, `float64`, `int8`–`uint32`, `q15`, `q31` |
 | `search --float V [--tol T] \| --double V \| --int32 V \| --int16 V \| --bytes HEX \| --string S [--limit N] [--unaligned]` | Hits in loaded memory, with the referencing functions |
 
-`<func>` and `<target>` take a symbol name or an address. Addresses are hexadecimal. `0x…` is always read as an address;
-a bare hex string is used only when no symbol has that name.
+`<func>` and `<target>` take a symbol name or an address. Addresses are hexadecimal, in one of two forms:
+
+* **`space:offset`, exactly as l2a prints addresses**: `code:0c7d`, `mem:0108`, `ram:24000749`, `code:0014.1`. The
+  offset counts the addressable units of that space, and `.n` adds n bytes inside a unit. This is the form to copy from
+  one command into the next, and the only way to name a space other than the default one, such as the RAM of an AVR.
+  It applies when the name before the colon is an address space of the program.
+* **`0x…`**: always an address, a **byte** offset in the default space. A bare hex string means the same, but is used
+  only when no symbol has that name.
+
+On targets with one byte-addressed space (ARM, x86) both forms give the same number. They differ where a space counts
+in larger units: AVR flash counts 16-bit words, so the function listed as `code:0c7d` is `0x18fa`. Instruction
+operands that Ghidra prints as `0x…` (`call 0x439c`) are byte offsets too.
 
 **Output.**
 * Every query prints at most 60 lines by default. `--max-lines N` changes the limit and `0` means everything;
@@ -135,4 +154,8 @@ l2a query L2A-cases\pm -p PhysicalModeling-v0.1.0.bin functions --sort fp --max-
 * There is no write access: renames and comments are made in the Ghidra GUI. The GUI and `l2a` must not have the project
   open at the same time; a locked project gives a clear error.
 * There is a vector-table reader for raw Cortex-M images only. Other profiles rely on Ghidra's own analysis.
+* AVR works through the `raw` profile (`--language avr8:LE:16:default --compiler gcc --base 0x0`, on a flat image made
+  from the Intel HEX file), with gaps (MEASURED 2026-11-15 on an ATmega328P image): Ghidra's default AVR8 profile labels
+  the vector table for a part with one-word vectors, and handlers reached only through the unread vectors stay
+  undisassembled. There is no AVR profile and no AVR integration test.
 * The analysis options cannot be set yet.

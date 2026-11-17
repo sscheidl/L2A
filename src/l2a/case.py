@@ -84,9 +84,11 @@ def tracked_below(index: bytes, rel: str) -> bool:
 
     A pathspec is not enough: it compares case exactly, while NTFS treats `l2a-cases` and `L2A-cases` as one folder.
     Folding also refuses a different spelling on a case-sensitive file system, which is the safe side.
+    A name that is not valid UTF-8 raises `UnicodeDecodeError`, so the caller refuses: Git for Windows writes such a
+    byte to disk as a different character (`\\xff` becomes `ÿ`), which no comparison here could follow.
     """
     folded = rel.casefold()
-    names = (entry.decode("utf-8", "surrogateescape").casefold() for entry in index.split(b"\0"))
+    names = (entry.decode("utf-8").casefold() for entry in index.split(b"\0"))
     return any(name == folded or name.startswith(folded + "/") for name in names)
 
 

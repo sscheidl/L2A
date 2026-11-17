@@ -44,6 +44,16 @@ class ExcludedCaseTest(unittest.TestCase):
         self.case.root.mkdir(parents=True)
         self.assertEqual(self.case.resolve_out("dump.txt"), self.case.out_dir / "dump.txt")
 
+    def test_out_below_a_nested_checkout_is_refused_before_git_runs(self):
+        nested = self.case.out_dir / "sub"
+        (nested / ".git").mkdir(parents=True)
+        for out in ("sub/x.txt", "sub/deeper/x.txt"):
+            for allow in (False, True):
+                with mock.patch.object(casemod.subprocess, "run", side_effect=AssertionError("git ran")):
+                    with self.assertRaisesRegex(CaseError, "nested checkout", msg=f"{out} {allow}"):
+                        self.case.resolve_out(out, allow_outside=allow)
+        self.assertEqual(self.case.resolve_out("other/x.txt"), self.case.out_dir / "other" / "x.txt")
+
     def test_only_a_plain_direct_subfolder_is_a_case(self):
         root = self.repo / "L2A-cases"
         for bad in (root, root / "_sealed", root / ".hidden", root / "one" / "nested"):

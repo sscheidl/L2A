@@ -210,13 +210,20 @@ class Case:
 
         Inside the case folder, only `<case>/out/` is allowed; the project, records, targets and case.md are never
         overwritten. Paths outside the case folder, or in a git checkout that does not exclude them, need
-        `allow_outside`.
+        `allow_outside`. A `.git` between the case folder and the target is refused before git runs: it can only come
+        from case data, and git's own documentation warns against running git in an untrusted `.git`.
         """
         p = Path(out)
         path = (p if p.is_absolute() else self.out_dir / p).resolve()
         if is_within(path, self.root):
             if not is_within(path, self.out_dir) or path == self.out_dir:
                 raise CaseError(f"--out {path} is inside the case folder but not in {self.out_dir}")
+            for folder in [path.parent, *path.parent.parents]:
+                if folder == self.root:
+                    break
+                if (folder / ".git").exists():
+                    raise CaseError(f"--out {path} is below the nested checkout {folder}; l2a does not run git on "
+                                    "or write into a checkout inside a case")
         elif not allow_outside:
             raise CaseError(f"--out {path} is outside the case folder {self.root}; use --allow-outside to override")
         if not allow_outside:

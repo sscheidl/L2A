@@ -133,6 +133,9 @@ operands that Ghidra prints as `0x…` (`call 0x439c`) are byte offsets too.
     overwritten, not even with `--allow-outside`.
   * Paths outside the case folder, or in a git checkout that does not exclude them, need `--allow-outside`. So `out\` of
     a case in `L2A-cases` needs no option.
+  * A path below a `.git` folder or file inside the case, for example from unpacked target data, is refused before
+    git runs, even with `--allow-outside`. Git's documentation warns that running git in an untrusted `.git` is not
+    safe.
   * The file is written new and swapped in, so a hard link never receives the content.
   * The path is checked again right before writing. This narrows a race with a concurrent change of the folder,
     but does not rule it out.

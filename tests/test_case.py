@@ -89,6 +89,18 @@ class ExcludedCaseTest(unittest.TestCase):
         with self.assertRaisesRegex(CaseError, "inside the git checkout"):
             self.case.resolve_out("dump.txt")
 
+    def test_index_name_that_is_not_utf8_is_refused(self):
+        # Git for Windows checks this entry out as `L2A-cases/ÿ/out/result.txt`.
+        blob = subprocess.run(["git", "hash-object", "-w", "--stdin"], cwd=self.repo, input=b"x", check=True,
+                              capture_output=True).stdout.strip()
+        subprocess.run(["git", "update-index", "--add", "--index-info"], cwd=self.repo, check=True, capture_output=True,
+                       input=b"100644 " + blob + b"\tL2A-cases/\xff/out/result.txt\n")
+        for root in (self.repo / "L2A-cases" / "ÿ", self.case.root):
+            with self.assertRaisesRegex(CaseError, "inside the git checkout", msg=str(root)):
+                Case.at(root).check_not_in_git()
+        with self.assertRaisesRegex(CaseError, "inside the git checkout"):
+            Case.at(self.repo / "L2A-cases" / "ÿ").resolve_out("result.txt")
+
     def test_similar_tracked_name_does_not_block(self):
         (self.repo / "L2A-cases").mkdir()
         (self.repo / "L2A-cases" / "one-more").write_text("x", encoding="utf-8")
